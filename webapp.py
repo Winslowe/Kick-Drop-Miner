@@ -1,6 +1,5 @@
 """FastAPI entry point for the multi-user server edition."""
 
-from collections import defaultdict, deque
 import asyncio
 import html
 import hmac
@@ -9,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import threading
 import time
 import urllib.error
@@ -40,17 +40,46 @@ from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
 from core.accounts import AccountStore
-from core.browser import cleanup_browser_resources
+from core.backup import backup_path, create_backup, list_backups, restore_backup
+from core.browser import active_browser_count, cleanup_browser_resources
+from core.http_client import ResponseTooLargeError, fetch_bytes
+from core.login import (
+    cancel_user_sessions,
+    perform_kick_login,
+    submit_verification_code,
+)
+from core.security import SlidingWindowLimiter, client_ip, parse_trusted_networks
 from core.service import MinerService
 from utils.helpers import DATA_DIR
 
 
 PASSWORD_HASH = os.environ.get("KDM_PASSWORD_HASH", "")
 SESSION_SECRET = os.environ.get("KDM_SESSION_SECRET", "")
-SECURE_COOKIES = os.environ.get("KDM_SECURE_COOKIES", "0") == "1"
+SECURE_COOKIES = os.environ.get("KDM_SECURE_COOKIES", "1") == "1"
 ADMIN_USERNAME = os.environ.get("KDM_ADMIN_USERNAME", "admin")
-REGISTRATION_ENABLED = os.environ.get("KDM_REGISTRATION_ENABLED", "1") == "1"
-MAX_ACTIVE_MINERS = max(1, int(os.environ.get("KDM_MAX_ACTIVE_MINERS", "3")))
+REGISTRATION_ENABLED = os.environ.get("KDM_REGISTRATION_ENABLED", "0") == "1"
+RESET_ADMIN_PASSWORD_ON_START = (
+    os.environ.get("KDM_RESET_ADMIN_PASSWORD_ON_START", "0") == "1"
+)
+AUTO_RESUME_ON_START = (
+    os.environ.get("KDM_AUTO_RESUME_ON_START", "1") == "1"
+)
+AUTO_RESUME_DELAY_SECONDS = max(
+    0,
+    min(300, int(os.environ.get("KDM_AUTO_RESUME_DELAY_SECONDS", "45"))),
+)
+MAX_ACTIVE_MINERS = max(1, int(os.environ.get("KDM_MAX_ACTIVE_MINERS", "9999")))
+MAX_REQUEST_BYTES = max(
+    16 * 1024,
+    int(os.environ.get("KDM_MAX_REQUEST_BYTES", str(256 * 1024))),
+)
+MIN_FREE_DISK_BYTES = max(
+    1,
+    int(os.environ.get("KDM_MIN_FREE_DISK_MB", "256")),
+) * 1024 * 1024
+TRUSTED_PROXY_NETWORKS = parse_trusted_networks(
+    os.environ.get("KDM_TRUSTED_PROXY_CIDRS", "127.0.0.1/32,::1/128")
+)
 
 if not PASSWORD_HASH or not SESSION_SECRET:
     raise RuntimeError(
@@ -59,12 +88,7 @@ if not PASSWORD_HASH or not SESSION_SECRET:
 
 
 def _client_ip(request):
-    forwarded = request.headers.get("cf-connecting-ip") or request.headers.get(
-        "x-forwarded-for"
-    )
-    if forwarded:
-        return forwarded.split(",", 1)[0].strip()
-    return request.client.host if request.client else "unknown"
+    return client_ip(request, TRUSTED_PROXY_NETWORKS)
 
 
 class ServiceRegistry:
@@ -88,12 +112,23 @@ class ServiceRegistry:
                     data_dir=self._data_dir(user),
                     user_id=user["id"],
                     username=user["username"],
+                    max_queue_items=user.get("max_queue_items", 25),
+                    max_storage_mb=user.get("max_storage_mb", 100),
                 )
                 self._services[user["id"]] = service
+            else:
+                service.update_limits(
+                    user.get("max_queue_items", 25),
+                    user.get("max_storage_mb", 100),
+                )
             return service
 
     def start(self, user, item_id=None):
         with self._lock:
+            if not user.get("mining_enabled", 1):
+                raise ValueError(
+                    "Madencilik izni yönetici tarafından kapatılmış."
+                )
             service = self.get(user)
             if not service.is_running():
                 active_count = sum(
@@ -106,11 +141,55 @@ class ServiceRegistry:
                     )
             service.start(item_id)
 
+    def active_worker_count(self):
+        with self._lock:
+            return sum(
+                service.is_running()
+                for service in self._services.values()
+            )
+
+    def require_auxiliary_browser_capacity(self):
+        if self.active_worker_count() >= MAX_ACTIVE_MINERS:
+            raise ValueError(
+                "Ek tarayıcı açmak için önce aktif madencilerden birini durdurun."
+            )
+
+    def restore_after_restart(self, users):
+        restored = 0
+        for user in users:
+            if (
+                not user.get("active")
+                or not user.get("mining_enabled", 1)
+                or restored >= MAX_ACTIVE_MINERS
+            ):
+                continue
+            service = self.get(user)
+            try:
+                if service.resume_after_restart():
+                    restored += 1
+            except Exception as error:
+                service._log(
+                    f"Otomatik devam başlatılamadı: {error}",
+                    "error",
+                )
+        return restored
+
     def stop_user(self, user_id):
         with self._lock:
             service = self._services.get(user_id)
         if service:
             service.stop()
+
+    def remove_user(self, user_id):
+        with self._lock:
+            service = self._services.pop(user_id, None)
+        if service:
+            service.shutdown()
+
+    def reset(self):
+        self.shutdown()
+        with self._lock:
+            self._services.clear()
 
     def user_runtime(self, user):
         service = self.get(user)
@@ -121,10 +200,14 @@ class ServiceRegistry:
             "completed": state["stats"]["completed"],
             "browser_count": state["browser_count"],
             "queue_running": state["queue_running"],
+            "auto_start": service.config.auto_start,
+            "mining_enabled": bool(user.get("mining_enabled", 1)),
             "cookie_ready": state["cookie"]["available"]
             and not state["cookie"]["expired"],
             "active_channel": active.get("url") if active else None,
             "active_status": active.get("status_label") if active else None,
+            "storage_bytes": service.data_usage_bytes(),
+            "max_storage_mb": service.max_storage_mb,
         }
 
     def reward_name_for_image(self, filename):
@@ -169,15 +252,43 @@ app.mount("/static", StaticFiles(directory=ROOT / "web" / "static"), name="stati
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
 accounts = AccountStore(os.path.join(DATA_DIR, "accounts.sqlite3"))
-accounts.bootstrap_admin(ADMIN_USERNAME, PASSWORD_HASH)
+accounts.bootstrap_admin(
+    ADMIN_USERNAME,
+    PASSWORD_HASH,
+    reset_password=RESET_ADMIN_PASSWORD_ON_START,
+)
 services = ServiceRegistry()
-login_attempts = defaultdict(lambda: deque(maxlen=10))
-registration_attempts = defaultdict(lambda: deque(maxlen=5))
+rate_limits = SlidingWindowLimiter()
 last_seen_updates = {}
+shutdown_event = threading.Event()
 
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "İstek gövdesi izin verilen boyutu aşıyor."},
+                )
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Geçersiz Content-Length başlığı."},
+            )
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > MAX_REQUEST_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "İstek gövdesi izin verilen boyutu aşıyor."},
+                )
+        # Starlette reuses this cached body when dependencies parse JSON.
+        request._body = bytes(body)
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -193,6 +304,10 @@ async def security_headers(request: Request, call_next):
         "connect-src 'self' https://cloudflareinsights.com; "
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     )
+    if SECURE_COOKIES:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
     if request.url.path.startswith("/api/") or request.url.path in ("/", "/health"):
         response.headers["Cache-Control"] = "no-store"
     return response
@@ -206,7 +321,7 @@ class LoginBody(BaseModel):
 class RegisterBody(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     email: str = Field(default="", max_length=160)
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(min_length=10, max_length=256)
 
 
 class StreamBody(BaseModel):
@@ -219,21 +334,48 @@ class StartBody(BaseModel):
 
 
 class CookieBody(BaseModel):
-    cookies: list[dict]
+    cookies: list[dict] = Field(min_length=1, max_length=50)
 
 
 class KickLoginBody(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=160)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class VerifyCodeBody(BaseModel):
-    code: str
-    session_id: str
+    code: str = Field(min_length=4, max_length=8, pattern=r"^[A-Za-z0-9]+$")
+    session_id: str = Field(min_length=20, max_length=128)
 
 
 class ActiveBody(BaseModel):
     active: bool
+
+
+class MiningBody(BaseModel):
+    enabled: bool
+
+
+class PasswordChangeBody(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=10, max_length=256)
+
+
+class AdminPasswordBody(BaseModel):
+    password: str = Field(min_length=1, max_length=256)
+
+
+class PasswordResetBody(BaseModel):
+    new_password: str = Field(min_length=10, max_length=256)
+
+
+class UserLimitsBody(BaseModel):
+    max_queue_items: int = Field(ge=1, le=250)
+    max_storage_mb: int = Field(ge=10, le=4096)
+
+
+class BackupRestoreBody(BaseModel):
+    name: str = Field(min_length=10, max_length=160, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str = Field(min_length=1, max_length=256)
 
 
 def _session_user(request):
@@ -284,24 +426,47 @@ def require_admin(request: Request):
     return user
 
 
-def _rate_limited(bucket, key, limit, window):
-    now = time.time()
-    attempts = bucket[key]
-    while attempts and now - attempts[0] > window:
-        attempts.popleft()
-    if len(attempts) >= limit:
-        return True
-    attempts.append(now)
-    return False
+def _consume_rate_limit(key, limit, window):
+    allowed, retry_after = rate_limits.consume(key, limit, window)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Çok fazla deneme yapıldı. Daha sonra tekrar deneyin.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def _audit(action, request, actor=None, target=None, detail=""):
+    accounts.add_audit(
+        action,
+        actor=actor,
+        target=target,
+        ip_address=_client_ip(request),
+        detail=detail,
+    )
 
 
 @app.on_event("startup")
 def startup():
     cleanup_browser_resources()
+    shutdown_event.clear()
+    if AUTO_RESUME_ON_START:
+        threading.Thread(
+            target=_delayed_restore,
+            name="kdm-delayed-restore",
+            daemon=True,
+        ).start()
+
+
+def _delayed_restore():
+    if shutdown_event.wait(AUTO_RESUME_DELAY_SECONDS):
+        return
+    services.restore_after_restart(accounts.list_users())
 
 
 @app.on_event("shutdown")
 def shutdown():
+    shutdown_event.set()
     services.shutdown()
     cleanup_browser_resources()
 
@@ -313,7 +478,30 @@ async def value_error_handler(_request, error):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "kick-drop-miner"}
+    database_ok = accounts.health_check()
+    try:
+        browser_registry_ok = active_browser_count() >= 0
+    except Exception:
+        browser_registry_ok = False
+    try:
+        usage = shutil.disk_usage(DATA_DIR)
+        disk_ok = usage.free >= MIN_FREE_DISK_BYTES
+        writable = os.access(DATA_DIR, os.W_OK)
+    except OSError:
+        disk_ok = False
+        writable = False
+    ok = database_ok and disk_ok and writable and browser_registry_ok
+    payload = {
+        "ok": ok,
+        "service": "kick-drop-miner",
+        "checks": {
+            "database": database_ok,
+            "disk": disk_ok,
+            "writable": writable,
+            "browser_registry": browser_registry_ok,
+        },
+    }
+    return JSONResponse(status_code=200 if ok else 503, content=payload)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -398,21 +586,28 @@ def reward_image(filename: str):
     for url in candidates:
         try:
             request = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(request, timeout=12) as upstream:
-                content_type = upstream.headers.get_content_type()
-                content_length = int(upstream.headers.get("Content-Length") or 0)
-                if not content_type.startswith("image/") or content_length > 5_000_000:
-                    continue
-                body = upstream.read(5_000_001)
-                if not body or len(body) > 5_000_000:
-                    continue
+            result = fetch_bytes(
+                request,
+                timeout=12,
+                max_bytes=5_000_000,
+                attempts=2,
+            )
+            content_type = result.headers.get_content_type()
+            body = result.body
+            if not content_type.startswith("image/") or not body:
+                continue
             cache_path.write_bytes(body)
             return Response(
                 body,
                 media_type=content_type,
                 headers={"Cache-Control": "public, max-age=86400"},
             )
-        except (OSError, ValueError, urllib.error.URLError):
+        except (
+            OSError,
+            ValueError,
+            urllib.error.URLError,
+            ResponseTooLargeError,
+        ):
             continue
 
     return Response(
@@ -429,16 +624,17 @@ def home(request: Request):
     return FileResponse(ROOT / "web" / "index.html")
 
 
+@app.get("/api/auth-config")
+def auth_config():
+    return {"registration_enabled": REGISTRATION_ENABLED}
+
+
 @app.post("/api/register")
 def register(body: RegisterBody, request: Request):
     if not REGISTRATION_ENABLED:
         raise HTTPException(status_code=403, detail="Yeni hesap oluşturma kapalı.")
     ip = _client_ip(request)
-    if _rate_limited(registration_attempts, ip, 3, 3600):
-        raise HTTPException(
-            status_code=429,
-            detail="Çok fazla kayıt denemesi. Daha sonra tekrar deneyin.",
-        )
+    _consume_rate_limit(f"register:{ip}", 3, 3600)
     username = body.username.strip()
     email = body.email.strip().lower()
     if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", username):
@@ -448,6 +644,7 @@ def register(body: RegisterBody, request: Request):
     if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise ValueError("Geçerli bir e-posta adresi girin.")
     user = accounts.create_user(username, email, body.password)
+    _audit("user_registered", request, actor=user, target=user)
     csrf = secrets.token_urlsafe(32)
     request.session.clear()
     request.session.update(
@@ -464,16 +661,14 @@ def register(body: RegisterBody, request: Request):
 def login(body: LoginBody, request: Request):
     ip = _client_ip(request)
     key = f"{ip}:{body.username.casefold()}"
-    if _rate_limited(login_attempts, key, 5, 300):
-        raise HTTPException(
-            status_code=429,
-            detail="Çok fazla hatalı deneme. Beş dakika sonra tekrar deneyin.",
-        )
+    _consume_rate_limit(f"panel-login-ip:{ip}", 20, 300)
+    _consume_rate_limit(f"panel-login:{key}", 5, 300)
     user = accounts.authenticate(body.username.strip(), body.password, ip)
     if not user:
         time.sleep(0.35)
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre yanlış.")
-    login_attempts[key].clear()
+    rate_limits.clear(f"panel-login:{key}")
+    _audit("panel_login", request, actor=user, target=user)
     csrf = secrets.token_urlsafe(32)
     request.session.clear()
     request.session.update(
@@ -501,6 +696,7 @@ def state(request: Request, user=Depends(require_auth)):
         "username": user["username"],
         "email": user["email"],
         "role": user["role"],
+        "mining_enabled": bool(user.get("mining_enabled", 1)),
     }
     result["limits"] = {"max_active_miners": MAX_ACTIVE_MINERS}
     return result
@@ -540,6 +736,7 @@ def stop_miner(user=Depends(require_csrf)):
 
 @app.post("/api/inventory/refresh")
 async def refresh_inventory(user=Depends(require_csrf)):
+    services.require_auxiliary_browser_capacity()
     inventory = await asyncio.to_thread(services.get(user).refresh_inventory)
     return {"ok": True, "inventory": inventory}
 
@@ -561,15 +758,27 @@ def replace_cookies(body: CookieBody, user=Depends(require_csrf)):
     }
 
 @app.post("/api/kick-login")
-async def kick_login(body: KickLoginBody, user=Depends(require_csrf)):
-    from core.login import perform_kick_login
-    import asyncio
-
-    result = await asyncio.to_thread(perform_kick_login, body.username, body.password)
+async def kick_login(
+    body: KickLoginBody,
+    request: Request,
+    user=Depends(require_csrf),
+):
+    services.require_auxiliary_browser_capacity()
+    ip = _client_ip(request)
+    _consume_rate_limit(f"kick-login:user:{user['id']}", 4, 15 * 60)
+    _consume_rate_limit(f"kick-login:ip:{ip}", 8, 15 * 60)
+    result = await asyncio.to_thread(
+        perform_kick_login,
+        body.username,
+        body.password,
+        user["id"],
+    )
     if result.get("success"):
         services.get(user).replace_cookies(result["cookies"])
+        _audit("kick_login_success", request, actor=user, target=user)
         return {"success": True}
     elif result.get("needs_verification"):
+        _audit("kick_login_verification", request, actor=user, target=user)
         return {
             "success": False,
             "needs_verification": True,
@@ -580,18 +789,42 @@ async def kick_login(body: KickLoginBody, user=Depends(require_csrf)):
 
 
 @app.post("/api/kick-verify")
-async def kick_verify(body: VerifyCodeBody, user=Depends(require_csrf)):
-    from core.login import submit_verification_code
-    import asyncio
-
+async def kick_verify(
+    body: VerifyCodeBody,
+    request: Request,
+    user=Depends(require_csrf),
+):
+    _consume_rate_limit(f"kick-verify:{user['id']}:{body.session_id}", 6, 15 * 60)
     result = await asyncio.to_thread(
-        submit_verification_code, body.session_id, body.code
+        submit_verification_code,
+        body.session_id,
+        body.code,
+        user["id"],
     )
     if result.get("success"):
         services.get(user).replace_cookies(result["cookies"])
+        rate_limits.clear(f"kick-verify:{user['id']}:{body.session_id}")
+        _audit("kick_verify_success", request, actor=user, target=user)
         return {"success": True}
     else:
         return {"success": False, "error": result.get("error")}
+
+
+@app.post("/api/account/password")
+def change_password(
+    body: PasswordChangeBody,
+    request: Request,
+    user=Depends(require_csrf),
+):
+    updated = accounts.change_password(
+        user["id"],
+        body.current_password,
+        body.new_password,
+    )
+    cancel_user_sessions(user["id"])
+    _audit("password_changed", request, actor=user, target=user)
+    request.session.clear()
+    return {"ok": True, "user": updated, "reauthenticate": True}
 
 
 @app.post("/api/logs/clear")
@@ -616,26 +849,230 @@ def admin_users(_admin=Depends(require_admin)):
 def admin_set_active(
     user_id: str,
     body: ActiveBody,
+    request: Request,
     admin=Depends(require_admin),
 ):
     if user_id == admin["id"] and not body.active:
         raise ValueError("Kendi yönetici hesabınızı devre dışı bırakamazsınız.")
     if not body.active:
         services.stop_user(user_id)
-    return {"ok": True, "user": accounts.set_active(user_id, body.active)}
+    user = accounts.set_active(user_id, body.active)
+    _audit("user_active_changed", request, actor=admin, target=user, detail=str(body.active))
+    return {"ok": True, "user": user}
 
 
 @app.post("/api/admin/users/{user_id}/stop")
-def admin_stop_user(user_id: str, _admin=Depends(require_admin)):
+def admin_stop_user(
+    user_id: str,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    target = accounts.get(user_id)
     services.stop_user(user_id)
+    _audit("miner_stopped", request, actor=admin, target=target)
     return {"ok": True}
+
+
+@app.post("/api/admin/users/{user_id}/mining")
+def admin_set_mining(
+    user_id: str,
+    body: MiningBody,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    existing = accounts.get(user_id)
+    if not existing:
+        raise ValueError("Kullanıcı bulunamadı.")
+    if body.enabled and not existing.get("active"):
+        raise ValueError("Devre dışı hesap için madencilik başlatılamaz.")
+    user = accounts.set_mining_enabled(user_id, body.enabled)
+    _audit(
+        "mining_permission_changed",
+        request,
+        actor=admin,
+        target=user,
+        detail=str(body.enabled),
+    )
+    if not body.enabled:
+        services.stop_user(user_id)
+        return {"ok": True, "user": user, "started": False}
+    service = services.get(user)
+    state = service.snapshot()
+    can_start = (
+        bool(state["items"])
+        and state["stats"]["pending"] > 0
+        and state["cookie"]["available"]
+        and not state["cookie"]["expired"]
+    )
+    if can_start and not service.is_running():
+        services.start(user)
+        return {"ok": True, "user": user, "started": True}
+    return {"ok": True, "user": user, "started": service.is_running()}
 
 
 @app.post("/api/admin/users/{user_id}/sessions/reset")
 def admin_reset_sessions(
     user_id: str,
+    request: Request,
     admin=Depends(require_admin),
 ):
     if user_id == admin["id"]:
         raise ValueError("Aktif yönetici oturumu bu ekrandan sonlandırılamaz.")
-    return {"ok": True, "user": accounts.invalidate_sessions(user_id)}
+    cancel_user_sessions(user_id)
+    user = accounts.invalidate_sessions(user_id)
+    _audit("sessions_reset", request, actor=admin, target=user)
+    return {"ok": True, "user": user}
+
+
+@app.get("/api/admin/users/{user_id}/cookies")
+def admin_user_cookies(
+    user_id: str,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    target = accounts.get(user_id)
+    if not target:
+        raise ValueError("Kullanıcı bulunamadı.")
+    cookies = services.get(target).admin_cookies(reveal=True)
+    _audit("cookies_viewed", request, actor=admin, target=target)
+    return {"ok": True, "cookies": cookies, "revealed": True}
+
+
+@app.post("/api/admin/users/{user_id}/cookies/reveal")
+def admin_reveal_user_cookies(
+    user_id: str,
+    body: AdminPasswordBody,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    _consume_rate_limit(f"cookie-reveal:{admin['id']}", 5, 15 * 60)
+    if not accounts.verify_user_password(admin["id"], body.password):
+        _audit("cookies_reveal_denied", request, actor=admin, detail="bad_password")
+        raise HTTPException(status_code=403, detail="Yönetici parolası yanlış.")
+    target = accounts.get(user_id)
+    if not target:
+        raise ValueError("Kullanıcı bulunamadı.")
+    cookies = services.get(target).admin_cookies(reveal=True)
+    _audit("cookies_revealed", request, actor=admin, target=target)
+    return {"ok": True, "cookies": cookies, "revealed": True}
+
+
+@app.post("/api/admin/users/{user_id}/password")
+def admin_reset_password(
+    user_id: str,
+    body: PasswordResetBody,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    target = accounts.reset_password(user_id, body.new_password)
+    cancel_user_sessions(user_id)
+    _audit("password_reset", request, actor=admin, target=target)
+    return {"ok": True, "user": target}
+
+
+@app.post("/api/admin/users/{user_id}/limits")
+def admin_set_limits(
+    user_id: str,
+    body: UserLimitsBody,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    target = accounts.set_limits(
+        user_id,
+        body.max_queue_items,
+        body.max_storage_mb,
+    )
+    services.get(target).update_limits(
+        target["max_queue_items"],
+        target["max_storage_mb"],
+    )
+    _audit("user_limits_changed", request, actor=admin, target=target)
+    return {"ok": True, "user": target}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(
+    user_id: str,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    if user_id == admin["id"]:
+        raise ValueError("Kendi yönetici hesabınızı silemezsiniz.")
+    target = accounts.get(user_id)
+    if not target:
+        raise ValueError("Kullanıcı bulunamadı.")
+    cancel_user_sessions(user_id)
+    services.remove_user(user_id)
+    data_dir = services._data_dir(target)
+    accounts.delete_user(user_id)
+    shutil.rmtree(data_dir, ignore_errors=True)
+    _audit("user_deleted", request, actor=admin, target=target)
+    return {"ok": True}
+
+
+@app.get("/api/admin/audit")
+def admin_audit(_admin=Depends(require_admin)):
+    return {"ok": True, "events": accounts.list_audit(250)}
+
+
+@app.get("/api/admin/health")
+def admin_health(_admin=Depends(require_admin)):
+    usage = shutil.disk_usage(DATA_DIR)
+    return {
+        "ok": accounts.health_check() and os.access(DATA_DIR, os.W_OK),
+        "database": accounts.health_check(),
+        "data_writable": os.access(DATA_DIR, os.W_OK),
+        "disk": {
+            "total": usage.total,
+            "used": usage.used,
+            "free": usage.free,
+        },
+        "active_browsers": sum(
+            service.snapshot()["browser_count"]
+            for service in list(services._services.values())
+        ),
+    }
+
+
+@app.get("/api/admin/backups")
+def admin_backups(_admin=Depends(require_admin)):
+    return {"ok": True, "backups": list_backups(DATA_DIR)}
+
+
+@app.post("/api/admin/backups")
+def admin_create_backup(
+    request: Request,
+    admin=Depends(require_admin),
+):
+    _consume_rate_limit(f"backup-create:{admin['id']}", 3, 60 * 60)
+    path = create_backup(DATA_DIR, accounts.database_path)
+    _audit("backup_created", request, actor=admin, detail=path.name)
+    return {"ok": True, "backup": path.name}
+
+
+@app.get("/api/admin/backups/{name}")
+def admin_download_backup(name: str, _admin=Depends(require_admin)):
+    path = backup_path(DATA_DIR, name)
+    return FileResponse(
+        path,
+        media_type="application/zip",
+        filename=path.name,
+    )
+
+
+@app.post("/api/admin/backups/restore")
+def admin_restore_backup(
+    body: BackupRestoreBody,
+    request: Request,
+    admin=Depends(require_admin),
+):
+    _consume_rate_limit(f"backup-restore:{admin['id']}", 3, 60 * 60)
+    if not accounts.verify_user_password(admin["id"], body.password):
+        _audit("backup_restore_denied", request, actor=admin, detail="bad_password")
+        raise HTTPException(status_code=403, detail="Yönetici parolası yanlış.")
+    services.reset()
+    cleanup_browser_resources()
+    path = restore_backup(DATA_DIR, body.name)
+    _audit("backup_restored", request, actor=admin, detail=path.name)
+    services.restore_after_restart(accounts.list_users())
+    return {"ok": True, "backup": path.name}

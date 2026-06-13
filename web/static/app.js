@@ -9,6 +9,7 @@ let inventoryAnimation = null;
 let confirmAction = null;
 let selectedGame = null;
 let adminLoaded = false;
+let selectedAdminCookieUser = null;
 const failedImageUrls = new Set();
 
 const viewMeta = {
@@ -105,6 +106,7 @@ function stateClass(state) {
 }
 
 function transitionForItem(item) {
+  if (item.finished || item.inventory_claimed) return null;
   if (item.transition?.message) return item.transition;
   const statuses = Object.values(item.channel_statuses || {});
   const latest = statuses.sort(
@@ -180,12 +182,16 @@ function renderState(state) {
   $("#currentUsername").textContent = state.user.username;
   $("#currentRole").textContent = state.user.role === "admin" ? "Yönetici" : "Üye";
   $("#adminNav").classList.toggle("hidden", state.user.role !== "admin");
-  $("#startQueueButton").disabled = state.queue_running || !state.items.length;
+  const miningEnabled = state.user.mining_enabled !== false;
+  $("#startQueueButton").disabled = state.queue_running || !state.items.length || !miningEnabled;
   $("#startQueueButton").textContent = state.queue_running
     ? active && ["starting", "verifying"].includes(active.status)
       ? "Başlatılıyor..."
       : "Sıra Çalışıyor"
     : "Sırayı Başlat";
+  if (!miningEnabled && !state.queue_running) {
+    $("#startQueueButton").textContent = "Admin İzni Gerekli";
+  }
   $("#stopQueueButton").disabled = !state.queue_running;
   $("#clearQueueButton").disabled = !state.items.length;
   $("#refreshInventoryButton").disabled = state.queue_running || state.inventory.loading;
@@ -279,9 +285,12 @@ function renderQueue(items) {
   container.innerHTML = items.map(item => {
     const name = item.campaign_name || channelName(item.url);
     const target = item.minutes ? `${item.minutes} dk hedef` : "Kampanya tamamlanana kadar";
-    const action = item.active
+    const completed = Boolean(item.finished || item.inventory_claimed);
+    const action = completed
+      ? `<span class="queue-completed-action">Tamamlandı</span>`
+      : item.active
       ? `<button class="button button-danger compact-button" data-stop>Durdur</button>`
-      : `<button class="button button-secondary compact-button" data-start="${escapeHtml(item.id)}" ${appState.queue_running || item.finished ? "disabled" : ""}>Başlat</button>`;
+      : `<button class="button button-secondary compact-button" data-start="${escapeHtml(item.id)}" ${appState.queue_running || appState.user.mining_enabled === false ? "disabled" : ""}>Başlat</button>`;
     const rewardImage = imageSource(item.reward_image);
     const preparing = item.active && ["starting", "verifying"].includes(item.status);
     const transition = transitionForItem(item);
@@ -293,7 +302,7 @@ function renderQueue(items) {
       && item.video_ok
       && item.video_advanced
     );
-    const progressLabel = item.finished || item.inventory_claimed
+    const progressLabel = completed
       ? "Drop tamamlandı"
       : mining
         ? item.drop_verified ? "Drop kasılıyor" : "İlerleme doğrulaması bekleniyor"
@@ -303,10 +312,12 @@ function renderQueue(items) {
     const channels = item.campaign_channels || [];
     const channelNodes = channels.map(channel => {
       const url = channel.url || `https://kick.com/${channel.slug || ""}`;
-      const status = item.channel_statuses?.[url]?.state;
+      const status = completed ? null : item.channel_statuses?.[url]?.state;
       const active = url === item.url;
       const avatar = imageSource(channel.profile_picture);
-      const label = active && item.active && item.live === true
+      const label = completed
+        ? "Tamamlandı"
+        : active && item.active && item.live === true
         ? "Yayında"
         : status ? item.channel_statuses[url].label : active ? "Sıradaki" : "Hazır";
       return `<a class="plan-channel ${active ? "selected" : ""} ${status || ""}" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(channel.username || channel.slug || "Kick kanalını")} Kick'te aç">
@@ -350,7 +361,7 @@ function renderQueue(items) {
             <span class="${!preparing && item.drop_verified ? "ok" : ""}"><i></i> Drop</span>
           </div>
           ${preparing ? `<div class="queue-status-note preparing-note"><i></i><span><strong>${item.status === "starting" ? "Yayın hazırlanıyor" : "Yayın doğrulanıyor"}</strong><small>${item.status === "starting" ? "Tarayıcı ve güvenli oturum açılıyor." : "Canlılık ile video akışı kontrol ediliyor."}</small></span></div>` : ""}
-          ${!item.active && transition ? `<div class="queue-status-note skipped-note"><i></i><span><strong>Neden geçildi?</strong><small>${escapeHtml(transition.message)} Sıra yeniden başlatıldığında tekrar kontrol edilir.</small></span></div>` : ""}
+          ${!completed && !item.active && transition ? `<div class="queue-status-note skipped-note"><i></i><span><strong>Neden geçildi?</strong><small>${escapeHtml(transition.message)} Sıra yeniden başlatıldığında tekrar kontrol edilir.</small></span></div>` : ""}
         </div>
         <div class="queue-actions">
           ${action}
@@ -370,7 +381,7 @@ function progressForCampaign(campaign, progressList) {
       return value <= 1 && value > 0 ? value * 100 : value;
     });
     return {
-      percent: values.reduce((a,b) => a + b, 0) / values.length,
+      percent: values.length ? Math.min(...values) : 0,
       claimed: rewards.every(item => Boolean(item.claimed)),
     };
   }
@@ -537,9 +548,10 @@ async function refreshAdmin() {
     $("#adminUserCount").textContent = data.users.length;
     const activeMiners = data.users.filter(user => user.runtime.queue_running).length;
     const readyCookies = data.users.filter(user => user.runtime.cookie_ready).length;
+    const miningAllowed = data.users.filter(user => user.mining_enabled).length;
     $("#adminStats").innerHTML = `
       <article><small>Toplam kullanıcı</small><strong>${data.users.length}</strong><span>Kayıtlı hesap</span></article>
-      <article><small>Aktif hesap</small><strong>${data.users.filter(user => user.active).length}</strong><span>Giriş yapabilir</span></article>
+      <article><small>Madencilik izni</small><strong>${miningAllowed}</strong><span>Admin tarafından açık</span></article>
       <article><small>Çalışan madenci</small><strong>${activeMiners}/${data.max_active_miners}</strong><span>Kaynak sınırı</span></article>
       <article><small>Kick bağlantısı</small><strong>${readyCookies}</strong><span>Hazır hesap</span></article>`;
     $("#adminUserList").innerHTML = data.users.map(user => {
@@ -553,16 +565,62 @@ async function refreshAdmin() {
         <div><span class="state-badge ${user.runtime.queue_running ? "drop_verified" : "waiting"}">${user.runtime.queue_running ? "ÇALIŞIYOR" : "BOŞTA"}</span><small>${user.runtime.active_status || `${user.runtime.queue_count} görev`}</small></div>
         <div><span class="state-badge ${user.runtime.cookie_ready ? "completed" : "error"}">${user.runtime.cookie_ready ? "HAZIR" : "GEREKLİ"}</span><small>${user.runtime.browser_count} tarayıcı</small></div>
         <div class="admin-actions">
+          <button class="button ${user.mining_enabled ? "button-danger" : "button-secondary"} compact-button" data-admin-mining="${escapeHtml(user.id)}" data-next-mining="${user.mining_enabled ? "0" : "1"}">${user.mining_enabled ? "Madenciliği Kapat" : "İzni Aç ve Başlat"}</button>
           <button class="button button-ghost compact-button" data-admin-stop="${escapeHtml(user.id)}" ${user.runtime.queue_running ? "" : "disabled"}>Durdur</button>
+          <button class="button button-ghost compact-button" data-admin-cookies="${escapeHtml(user.id)}" data-admin-name="${escapeHtml(user.username)}">Çerezler</button>
+          <button class="button button-ghost compact-button" data-admin-password="${escapeHtml(user.id)}">Parola</button>
+          <button class="button button-ghost compact-button" data-admin-limits="${escapeHtml(user.id)}" data-queue-limit="${user.max_queue_items}" data-storage-limit="${user.max_storage_mb}">Limitler</button>
           <button class="button button-ghost compact-button" data-admin-sessions="${escapeHtml(user.id)}" ${user.role === "admin" ? "disabled" : ""}>Çıkış yaptır</button>
           <button class="button ${user.active ? "button-danger" : "button-secondary"} compact-button" data-admin-active="${escapeHtml(user.id)}" data-next-active="${user.active ? "0" : "1"}" ${user.role === "admin" ? "disabled" : ""}>${user.active ? "Devre dışı" : "Etkinleştir"}</button>
+          <button class="button button-danger compact-button" data-admin-delete="${escapeHtml(user.id)}" data-admin-name="${escapeHtml(user.username)}" ${user.role === "admin" ? "disabled" : ""}>Sil</button>
         </div>
       </article>`;
     }).join("");
+    await Promise.all([refreshBackups(), refreshAudit()]);
   } catch (error) {
     adminLoaded = false;
     toast("Admin verileri alınamadı", error.message, "error");
   }
+}
+
+function renderAdminCookies(cookies, revealed) {
+  $("#adminCookieList").innerHTML = cookies.length
+    ? cookies.map(cookie => `
+      <article class="admin-cookie-row">
+        <div><strong>${escapeHtml(cookie.name)}</strong><small>${escapeHtml(cookie.domain)}${escapeHtml(cookie.path)}</small></div>
+        <code>${escapeHtml(cookie.value)}</code>
+      </article>`).join("")
+    : `<div class="console-empty">Bu kullanıcı için kayıtlı Kick çerezi yok.</div>`;
+  $("#adminRevealPassword")?.classList.toggle("hidden", Boolean(revealed));
+  $("#revealAdminCookiesButton").classList.toggle("hidden", Boolean(revealed));
+}
+
+async function openAdminCookies(userId, username) {
+  selectedAdminCookieUser = userId;
+  $("#adminCookieTitle").textContent = `${username} • Kick Çerezleri`;
+  $("#adminRevealPassword").value = "";
+  const data = await request(`/api/admin/users/${userId}/cookies`);
+  renderAdminCookies(data.cookies, data.revealed);
+  $("#adminCookieModal").classList.remove("hidden");
+}
+
+async function refreshBackups() {
+  const data = await request("/api/admin/backups");
+  $("#adminBackupList").innerHTML = data.backups.length
+    ? data.backups.map(item => `
+      <article><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(formatDate(item.created_at))} • ${Math.ceil(item.size / 1024)} KB</small></span>
+      <span><a class="button button-ghost compact-button" href="/api/admin/backups/${encodeURIComponent(item.name)}">İndir</a>
+      <button class="button button-danger compact-button" data-restore-backup="${escapeHtml(item.name)}">Geri Yükle</button></span></article>`).join("")
+    : `<div class="console-empty">Henüz yedek oluşturulmadı.</div>`;
+}
+
+async function refreshAudit() {
+  const data = await request("/api/admin/audit");
+  $("#adminAuditList").innerHTML = data.events.length
+    ? data.events.slice(0, 80).map(event => `
+      <article><span><strong>${escapeHtml(event.action)}</strong><small>${escapeHtml(event.actor_username || "sistem")} → ${escapeHtml(event.target_username || "-")}</small></span>
+      <small>${escapeHtml(formatDate(event.created_at))}</small></article>`).join("")
+    : `<div class="console-empty">Denetim kaydı henüz boş.</div>`;
 }
 
 function startInventoryAnimation() {
@@ -956,8 +1014,80 @@ $("#adminUserList").addEventListener("click", async event => {
   const stop = event.target.closest("[data-admin-stop]");
   const sessions = event.target.closest("[data-admin-sessions]");
   const active = event.target.closest("[data-admin-active]");
+  const mining = event.target.closest("[data-admin-mining]");
+  const cookies = event.target.closest("[data-admin-cookies]");
+  const password = event.target.closest("[data-admin-password]");
+  const limits = event.target.closest("[data-admin-limits]");
+  const deleteUser = event.target.closest("[data-admin-delete]");
   try {
-    if (stop) {
+    if (cookies) {
+      await openAdminCookies(
+        cookies.dataset.adminCookies,
+        cookies.dataset.adminName,
+      );
+      return;
+    } else if (password) {
+      const newPassword = window.prompt(
+        "Kullanıcı için en az 10 karakterlik yeni parola:",
+      );
+      if (newPassword === null) return;
+      if (newPassword.length < 10) {
+        throw new Error("Yeni parola en az 10 karakter olmalıdır.");
+      }
+      await request(`/api/admin/users/${password.dataset.adminPassword}/password`, {
+        method: "POST",
+        body: JSON.stringify({new_password: newPassword}),
+      });
+      toast("Parola sıfırlandı", "Kullanıcının açık oturumları kapatıldı.");
+    } else if (limits) {
+      const queueLimit = window.prompt(
+        "En fazla kuyruk öğesi (1-250):",
+        limits.dataset.queueLimit,
+      );
+      if (queueLimit === null) return;
+      const storageLimit = window.prompt(
+        "En fazla kullanıcı verisi (MB, 10-4096):",
+        limits.dataset.storageLimit,
+      );
+      if (storageLimit === null) return;
+      await request(`/api/admin/users/${limits.dataset.adminLimits}/limits`, {
+        method: "POST",
+        body: JSON.stringify({
+          max_queue_items: Number(queueLimit),
+          max_storage_mb: Number(storageLimit),
+        }),
+      });
+      toast("Kaynak limitleri güncellendi");
+    } else if (deleteUser) {
+      showConfirm(
+        "Kullanıcı kalıcı olarak silinsin mi?",
+        `${deleteUser.dataset.adminName} hesabı, çerezleri ve kuyruk verileri silinecek.`,
+        async () => {
+          try {
+            await request(`/api/admin/users/${deleteUser.dataset.adminDelete}`, {
+              method: "DELETE",
+            });
+            toast("Kullanıcı silindi");
+            await refreshAdmin();
+          } catch (error) {
+            toast("Kullanıcı silinemedi", error.message, "error");
+          }
+        },
+      );
+      return;
+    } else if (mining) {
+      const enabled = mining.dataset.nextMining === "1";
+      const result = await request(`/api/admin/users/${mining.dataset.adminMining}/mining`, {
+        method: "POST",
+        body: JSON.stringify({enabled}),
+      });
+      toast(
+        enabled ? "Madencilik izni açıldı" : "Madencilik kapatıldı",
+        enabled
+          ? result.started ? "Seçili drop planı başlatıldı." : "İzin açıldı; görev ve Kick oturumu hazır olduğunda başlatılabilir."
+          : "Kullanıcının aktif madencisi durduruldu.",
+      );
+    } else if (stop) {
       await request(`/api/admin/users/${stop.dataset.adminStop}/stop`, {method: "POST"});
       toast("Madenci durduruldu", "Kullanıcının tarayıcı kaynakları kapatılıyor.");
     } else if (sessions) {
@@ -975,6 +1105,112 @@ $("#adminUserList").addEventListener("click", async event => {
     await refreshAdmin();
   } catch (error) {
     toast("Yönetici işlemi başarısız", error.message, "error");
+  }
+});
+
+$("#closeAdminCookieModal").addEventListener("click", () => {
+  $("#adminCookieModal").classList.add("hidden");
+  $("#adminRevealPassword").value = "";
+  $("#adminCookieList").replaceChildren();
+  selectedAdminCookieUser = null;
+});
+
+$("#revealAdminCookiesButton").addEventListener("click", async () => {
+  const password = $("#adminRevealPassword").value;
+  if (!selectedAdminCookieUser || !password) {
+    toast("Yönetici parolası gerekli", "", "error");
+    return;
+  }
+  try {
+    const data = await request(
+      `/api/admin/users/${selectedAdminCookieUser}/cookies/reveal`,
+      {
+        method: "POST",
+        body: JSON.stringify({password}),
+      },
+    );
+    renderAdminCookies(data.cookies, true);
+    $("#adminRevealPassword").value = "";
+    toast("Tam çerez değerleri açıldı", "Bu görüntüleme denetim kaydına yazıldı.");
+    await refreshAudit();
+  } catch (error) {
+    toast("Çerezler açılamadı", error.message, "error");
+  }
+});
+
+$("#createBackupButton").addEventListener("click", async () => {
+  try {
+    await request("/api/admin/backups", {method: "POST"});
+    toast("Yedek oluşturuldu", "Veritabanı ve kalıcı kullanıcı verileri arşivlendi.");
+    await Promise.all([refreshBackups(), refreshAudit()]);
+  } catch (error) {
+    toast("Yedek oluşturulamadı", error.message, "error");
+  }
+});
+
+$("#refreshBackupsButton").addEventListener("click", async () => {
+  try {
+    await refreshBackups();
+  } catch (error) {
+    toast("Yedek listesi alınamadı", error.message, "error");
+  }
+});
+
+$("#refreshAuditButton").addEventListener("click", async () => {
+  try {
+    await refreshAudit();
+  } catch (error) {
+    toast("Denetim kaydı alınamadı", error.message, "error");
+  }
+});
+
+$("#adminBackupList").addEventListener("click", event => {
+  const restore = event.target.closest("[data-restore-backup]");
+  if (!restore) return;
+  showConfirm(
+    "Bu yedek geri yüklensin mi?",
+    "Çalışan madenciler durdurulacak ve kalıcı veriler yedekteki sürümle değiştirilecek.",
+    async () => {
+      try {
+        const password = window.prompt("Geri yükleme için yönetici parolası:");
+        if (password === null) return;
+        await request("/api/admin/backups/restore", {
+          method: "POST",
+          body: JSON.stringify({
+            name: restore.dataset.restoreBackup,
+            password,
+          }),
+        });
+        toast("Yedek geri yüklendi", "Sayfa güncel verilerle yeniden yükleniyor.");
+        setTimeout(() => window.location.reload(), 700);
+      } catch (error) {
+        toast("Yedek geri yüklenemedi", error.message, "error");
+      }
+    },
+  );
+});
+
+$("#changePasswordForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const currentPassword = $("#currentPanelPassword").value;
+  const newPassword = $("#newPanelPassword").value;
+  const confirmation = $("#confirmPanelPassword").value;
+  if (newPassword !== confirmation) {
+    toast("Parolalar eşleşmiyor", "", "error");
+    return;
+  }
+  try {
+    await request("/api/account/password", {
+      method: "POST",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    toast("Parola değiştirildi", "Yeniden giriş ekranına yönlendiriliyorsun.");
+    setTimeout(() => window.location.replace("/"), 700);
+  } catch (error) {
+    toast("Parola değiştirilemedi", error.message, "error");
   }
 });
 

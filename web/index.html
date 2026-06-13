@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090d12">
   <title>Kick Drop Miner • Samuro Control</title>
   <link rel="icon" href="/assets/logo.png">
-  <link rel="stylesheet" href="/static/app.css?v=20260613-15">
+  <link rel="stylesheet" href="/static/app.css?v=20260613-16">
 </head>
 <body>
   <div id="bootOverlay" class="boot-overlay">
@@ -211,6 +211,22 @@
               <li><span>Sunucu doğrulamalı tamamlama</span><strong>Etkin</strong></li>
             </ul>
           </article>
+
+          <article class="settings-card">
+            <div class="settings-card-head">
+              <span class="settings-icon blue"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#shield"></use></svg></span>
+              <div><h3>Panel parolasını değiştir</h3><p>Değişiklikten sonra tüm oturumların kapatılır ve yeniden giriş istenir.</p></div>
+            </div>
+            <form id="changePasswordForm" class="stacked-form">
+              <label for="currentPanelPassword">Mevcut parola</label>
+              <input id="currentPanelPassword" type="password" autocomplete="current-password" maxlength="256" required>
+              <label for="newPanelPassword">Yeni parola</label>
+              <input id="newPanelPassword" type="password" autocomplete="new-password" minlength="10" maxlength="256" required>
+              <label for="confirmPanelPassword">Yeni parola tekrar</label>
+              <input id="confirmPanelPassword" type="password" autocomplete="new-password" minlength="10" maxlength="256" required>
+              <button class="button button-secondary" type="submit">Parolayı Değiştir</button>
+            </form>
+          </article>
         </div>
 
       </section>
@@ -230,6 +246,25 @@
             <span>Kullanıcı</span><span>Son erişim</span><span>Madenci</span><span>Kick</span><span>İşlemler</span>
           </div>
           <div id="adminUserList" class="admin-user-list"></div>
+        </div>
+        <div class="admin-tools-grid">
+          <article class="settings-card">
+            <div class="settings-card-head">
+              <div><h3>Yedekleme</h3><p>Veritabanı, çerezler ve kullanıcı kuyruklarını yedekle.</p></div>
+            </div>
+            <div class="admin-tool-actions">
+              <button id="createBackupButton" class="button button-secondary">Yedek Oluştur</button>
+              <button id="refreshBackupsButton" class="button button-ghost">Listeyi Yenile</button>
+            </div>
+            <div id="adminBackupList" class="admin-detail-list"></div>
+          </article>
+          <article class="settings-card">
+            <div class="settings-card-head">
+              <div><h3>Denetim Kaydı</h3><p>Hassas yönetici işlemlerinin kalıcı geçmişi.</p></div>
+            </div>
+            <button id="refreshAuditButton" class="button button-ghost">Kayıtları Yenile</button>
+            <div id="adminAuditList" class="admin-detail-list"></div>
+          </article>
         </div>
       </section>
     </main>
@@ -438,7 +473,21 @@
     </div>
   </div>
 
+  <div id="adminCookieModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="adminCookieTitle">
+    <div class="modal-card console-modal">
+      <button id="closeAdminCookieModal" class="modal-close" aria-label="Kapat">×</button>
+      <span class="eyebrow">HASSAS HESAP VERİSİ</span>
+      <h2 id="adminCookieTitle">Kick Çerezleri</h2>
+      <p>Değerler varsayılan olarak maskelenir. Tam görüntüleme denetim kaydına yazılır.</p>
+      <div id="adminCookieList" class="admin-cookie-list"></div>
+      <div class="admin-reveal-row">
+        <input id="adminRevealPassword" type="password" autocomplete="current-password" placeholder="Yönetici parolası">
+        <button id="revealAdminCookiesButton" class="button button-danger">Tam Değeri Göster</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastStack" class="toast-stack" aria-live="polite"></div>
-  <script src="/static/app.js?v=20260613-15" defer></script>
+  <script src="/static/app.js?v=20260613-16" defer></script>
 </body>
 </html>
