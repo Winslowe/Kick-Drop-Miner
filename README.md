@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/screenshot.png" alt="Kick Drop Miner Dashboard" width="800" style="border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.5);"/>
+  <img src="assets/screenshot.png" alt="Kick Drop Miner Dashboard" width="800" />
   <br/><br/>
   
   # ⛏️ Kick Drop Miner
