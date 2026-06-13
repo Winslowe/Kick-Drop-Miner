@@ -1,0 +1,20 @@
+# Ignore local app data
+cookies/
+chrome_data/
+utils/chrome_data/
+utils/cookies/
+config.json*
+__pycache__/
+*.pyc
+*.log
+dist/
+build/
+*.spec
+example_response.json
+/useful data
+progressapi_exampleresult.json
+streamerinfo_example.json
+.env
+data/
+artifacts/
+chromedriver-win64/

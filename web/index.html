@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d12">
+  <title>Kick Drop Miner • Samuro Control</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="stylesheet" href="/static/app.css?v=20260613-10">
+</head>
+<body>
+  <div id="bootOverlay" class="boot-overlay">
+    <div class="boot-card">
+      <div class="brand-mark boot-logo"><img src="/assets/logo.png" alt=""></div>
+      <span class="eyebrow">SAMURO CONTROL</span>
+      <h1>Kontrol merkezi hazırlanıyor</h1>
+      <p id="bootText">Güvenli oturum doğrulanıyor...</p>
+      <div class="boot-track"><span id="bootBar"></span></div>
+      <strong id="bootPercent">%8</strong>
+      <button id="bootRetryButton" class="button button-secondary hidden" type="button">Tekrar Dene</button>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"><img src="/assets/logo.png" alt=""></span>
+        <div>
+          <strong>Kick Drop Miner</strong>
+          <span>Samuro Control</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="Ana menü">
+        <button class="nav-item active" data-view="dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#miner"></use></svg><span>Madenci</span>
+        </button>
+        <button class="nav-item" data-view="inventory">
+          <svg class="nav-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#inventory"></use></svg><span>Envanter</span>
+          <span id="inventoryCount" class="nav-count">0</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg class="nav-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#settings"></use></svg><span>Ayarlar</span>
+        </button>
+        <button id="adminNav" class="nav-item hidden" data-view="admin">
+          <svg class="nav-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#shield"></use></svg><span>Admin Paneli</span>
+          <span id="adminUserCount" class="nav-count">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-health">
+        <div class="health-row">
+          <span><i id="serviceDot" class="status-dot online"></i> Hizmet</span>
+          <strong id="serviceStatus">Çevrimiçi</strong>
+        </div>
+        <div class="health-row">
+          <span>Tarayıcı</span>
+          <strong id="browserCount">0 aktif</strong>
+        </div>
+        <div class="health-row">
+          <span>Kick oturumu</span>
+          <strong id="cookieMini">Kontrol ediliyor</strong>
+        </div>
+        <button id="openConsoleButton" class="sidebar-console-button">
+          <span><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#activity"></use></svg> Sistem kaydı</span>
+          <strong id="lastLogMini">Hazır</strong>
+        </button>
+      </div>
+      <div class="sidebar-user">
+        <span class="user-avatar"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#user"></use></svg></span>
+        <div><strong id="currentUsername">Kullanıcı</strong><span id="currentRole">Üye</span></div>
+      </div>
+      <button id="logoutButton" class="logout-button">Güvenli Çıkış</button>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <span id="pageEyebrow" class="eyebrow">MADENCİ KONTROLÜ</span>
+          <h1 id="pageTitle">Yayın Merkezi</h1>
+          <p id="pageDescription">Drop sürecini doğrulanmış verilerle takip et.</p>
+        </div>
+        <div class="topbar-actions">
+          <span id="connectionPill" class="connection-pill">
+            <i class="status-dot online"></i> Canlı bağlantı
+          </span>
+          <button id="mobileMenuButton" class="icon-button mobile-only" aria-label="Menüyü aç"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#menu"></use></svg></button>
+        </div>
+      </header>
+
+      <section id="dashboardView" class="view active">
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span class="stat-icon blue"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#list"></use></svg></span>
+            <div><small>Madencilik planı</small><strong id="statTotal">0</strong><span id="statTotalHint">drop görevi</span></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon green"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#check"></use></svg></span>
+            <div><small>Tamamlanan</small><strong id="statCompleted">0</strong><span id="statCompletedHint">doğrulanmış görev</span></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon purple"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#browser"></use></svg></span>
+            <div><small>Aktif tarayıcı</small><strong id="statBrowsers">0</strong><span id="statBrowserHint">boştayken sıfır</span></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon amber"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#clock"></use></svg></span>
+            <div><small>Çalışma süresi</small><strong id="statUptime">0 dk</strong><span id="statUptimeHint">sunucu oturumu</span></div>
+          </article>
+        </div>
+
+        <article id="activeHero" class="active-hero">
+          <div class="hero-glow"></div>
+          <div id="heroReward" class="hero-reward hidden"><span>DROP</span></div>
+          <div class="hero-copy">
+            <span id="heroState" class="state-badge waiting">BEKLİYOR</span>
+            <h2 id="heroTitle">Madenci çalışmaya hazır</h2>
+            <p id="heroDescription">Listeden bir yayın seç veya sırayı başlat. Süre yalnız canlı yayın ve ilerleyen video doğrulandığında artar.</p>
+            <div id="heroMiningStatus" class="hero-mining-status hidden">
+              <i></i>
+              <span><strong>DROP KASILIYOR</strong><small id="heroMiningDetail">Kick ilerlemesi takip ediliyor</small></span>
+              <b id="heroMiningPercent">%0</b>
+            </div>
+            <div id="heroProgress" class="hero-progress hidden">
+              <div class="progress-track"><span id="heroProgressFill"></span></div>
+            </div>
+            <div class="verification-list">
+              <span id="verifyLive"><i></i> Kanal canlılığı</span>
+              <span id="verifyVideo"><i></i> Video akışı</span>
+              <span id="verifyDrop"><i></i> Kick ilerlemesi</span>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button id="startQueueButton" class="button button-primary">Sırayı Başlat</button>
+            <button id="stopQueueButton" class="button button-danger" disabled>Durdur</button>
+          </div>
+        </article>
+
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">YAYIN SIRASI</span>
+            <h2>Madencilik planı</h2>
+            <p>Her kanalda yalnız doğrulanmış izleme süresi kaydedilir.</p>
+          </div>
+          <div class="heading-actions">
+            <button id="clearQueueButton" class="button button-ghost">Listeyi Sıfırla</button>
+            <button id="openAddModal" class="button button-secondary">+ Yayın Ekle</button>
+          </div>
+        </div>
+        <div id="queueList" class="queue-list"></div>
+
+      </section>
+
+      <section id="inventoryView" class="view">
+        <div class="section-heading inventory-heading">
+          <div>
+            <span class="eyebrow">KICK DROP MERKEZİ</span>
+            <h2>Drop Envanteri</h2>
+            <p id="inventorySubtitle">Kampanyaları yenileyerek güncel ödülleri ve ilerlemeyi getir.</p>
+          </div>
+          <button id="refreshInventoryButton" class="button button-primary">Envanteri Yenile</button>
+        </div>
+        <div class="info-banner">
+          <span class="info-icon"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#info"></use></svg></span>
+          <div>
+            <strong>Kaynak dostu yenileme</strong>
+            <p>Envanter tarayıcısı yalnız yenileme sırasında açılır ve işlem bittiğinde tamamen kapanır. Madenci çalışırken ikinci tarayıcı açılmaz.</p>
+          </div>
+        </div>
+        <div id="inventoryLoading" class="inventory-loading hidden">
+          <div class="spinner-ring"></div>
+          <h3>Kick kampanyaları hazırlanıyor</h3>
+          <p id="inventoryLoadingText">Güvenli oturum kontrol ediliyor...</p>
+          <div class="loading-track"><span id="inventoryLoadingBar"></span></div>
+          <strong id="inventoryLoadingPercent">%5</strong>
+        </div>
+        <button id="backToGamesButton" class="back-button hidden"><svg class="button-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#arrow-left"></use></svg> Oyunlara dön</button>
+        <div id="gameGrid" class="game-grid"></div>
+        <div id="campaignGrid" class="campaign-grid hidden"></div>
+      </section>
+
+      <section id="settingsView" class="view">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">GÜVENLİK VE BAĞLANTI</span>
+            <h2>Ayarlar</h2>
+            <p>Kick oturumunu ve sunucu çalışma koşullarını buradan yönet.</p>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <article class="settings-card">
+            <div class="settings-card-head">
+              <span class="settings-icon green"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#cookie"></use></svg></span>
+              <div><h3>Kick oturum çerezleri</h3><p>Drop ilerlemesini hesabınla eşleştirmek için kullanılır.</p></div>
+              <span id="cookieBadge" class="state-badge waiting">KONTROL</span>
+            </div>
+            <details class="cookie-guide" open>
+              <summary>Adım adım çerez kurulumu</summary>
+              <ol>
+                <li><b>Kick hesabına giriş yap.</b><span>Kendi bilgisayarında <strong>kick.com</strong> sitesini aç ve drop kullanacağın hesapla oturum aç.</span></li>
+                <li><b>Geliştirici araçlarını aç.</b><span><kbd>F12</kbd> tuşuna bas. Üst menüden <strong>Application</strong>, Türkçe tarayıcıda <strong>Uygulama</strong> sekmesini seç.</span></li>
+                <li><b>Kick çerezlerini bul.</b><span>Sol tarafta <strong>Storage → Cookies → https://kick.com</strong> yolunu aç.</span></li>
+                <li><b>session_token değerini kopyala.</b><span>Listede <code>session_token</code> satırını bul; yalnız <strong>Value / Değer</strong> hücresini eksiksiz kopyala.</span></li>
+                <li><b>Aşağıya yapıştır ve kaydet.</b><span>Tek tokenı doğrudan yapıştırabilirsin. Elinde tam çerez JSON listesi varsa onu da kabul eder.</span></li>
+              </ol>
+              <div class="security-warning"><strong>Güvenlik:</strong> Bu değer hesabının oturum anahtarıdır. Kimseyle paylaşma; yalnız kendi sunucundaki bu panele gir.</div>
+            </details>
+            <label for="cookieJson">session_token veya çerez JSON içeriği</label>
+            <textarea id="cookieJson" rows="7" spellcheck="false" autocomplete="off" placeholder="session_token değerini buraya yapıştır&#10;&#10;veya&#10;&#10;[{&quot;name&quot;:&quot;session_token&quot;,&quot;value&quot;:&quot;...&quot;,&quot;domain&quot;:&quot;.kick.com&quot;}]"></textarea>
+            <div class="field-help">Kaydedilen değerler yalnız sunucunun özel veri klasöründe tutulur ve konsolda hiçbir zaman gösterilmez.</div>
+            <button id="saveCookiesButton" class="button button-secondary">Çerezleri Güvenle Güncelle</button>
+          </article>
+
+          <article class="settings-card">
+            <div class="settings-card-head">
+              <span class="settings-icon blue"><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#server"></use></svg></span>
+              <div><h3>Sunucu çalışma modeli</h3><p>Raspberry Pi için otomatik kaynak koruması.</p></div>
+            </div>
+            <ul class="feature-list">
+              <li><span>Tek aktif worker</span><strong>Etkin</strong></li>
+              <li><span>Boşta tarayıcı kapatma</span><strong>Etkin</strong></li>
+              <li><span>Görünmez Chromium + Xvfb</span><strong>Etkin</strong></li>
+              <li><span>8 dk ilerleme denetimi</span><strong>Etkin</strong></li>
+              <li><span>Sunucu doğrulamalı tamamlama</span><strong>Etkin</strong></li>
+            </ul>
+          </article>
+        </div>
+
+      </section>
+
+      <section id="adminView" class="view">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">YÖNETİCİ MERKEZİ</span>
+            <h2>Kullanıcı yönetimi</h2>
+            <p>Hesapları, Kick bağlantı durumlarını ve çalışan madencileri izle.</p>
+          </div>
+          <button id="refreshAdminButton" class="button button-secondary">Verileri Yenile</button>
+        </div>
+        <div id="adminStats" class="admin-stat-grid"></div>
+        <div class="admin-table-shell">
+          <div class="admin-table-head">
+            <span>Kullanıcı</span><span>Son erişim</span><span>Madenci</span><span>Kick</span><span>İşlemler</span>
+          </div>
+          <div id="adminUserList" class="admin-user-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="addModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="modal-card">
+      <button id="closeAddModal" class="modal-close" aria-label="Kapat">×</button>
+      <span class="eyebrow">YENİ YAYIN</span>
+      <h2 id="addModalTitle">Listeye kanal ekle</h2>
+      <p>Kick kanal bağlantısını ve hedef izleme süresini gir.</p>
+      <form id="addStreamForm">
+        <label for="streamUrl">Kick kanal bağlantısı</label>
+        <input id="streamUrl" type="url" placeholder="https://kick.com/kanal" required>
+        <label for="streamMinutes">Hedef süre (dakika)</label>
+        <input id="streamMinutes" type="number" value="120" min="0" max="10080" required>
+        <span class="field-help">Süresiz izleme için 0 kullanabilirsin.</span>
+        <button class="button button-primary button-wide" type="submit">Yayını Listeye Ekle</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-small">
+      <span class="warning-symbol">!</span>
+      <h2 id="confirmTitle">Emin misin?</h2>
+      <p id="confirmText"></p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="button button-ghost">Vazgeç</button>
+        <button id="confirmAccept" class="button button-danger">Onayla</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="consoleModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="consoleTitle">
+    <div class="modal-card console-modal">
+      <button id="closeConsoleButton" class="modal-close" aria-label="Kapat">×</button>
+      <span class="console-live"><i></i> CANLI SİSTEM KAYDI</span>
+      <h2 id="consoleTitle">Madenci Konsolu</h2>
+      <p>Tarayıcı, yayın değişimi ve Kick ilerlemesi burada izlenir.</p>
+      <div id="consoleLogList" class="console-log" aria-live="polite"></div>
+      <div class="console-actions">
+        <button id="downloadLogsButton" class="button button-ghost"><svg class="button-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#download"></use></svg> İndir</button>
+        <button id="clearLogsButton" class="button button-ghost"><svg class="button-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#trash"></use></svg> Temizle</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastStack" class="toast-stack" aria-live="polite"></div>
+  <script src="/static/app.js?v=20260613-10" defer></script>
+</body>
+</html>

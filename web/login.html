@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d12">
+  <title>Giriş • Kick Drop Miner</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="stylesheet" href="/static/app.css?v=20260612-2">
+</head>
+<body class="login-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <main class="login-shell">
+    <section class="login-card glass">
+      <div class="brand brand-center">
+        <span class="brand-mark"><img src="/assets/logo.png" alt=""></span>
+        <div>
+          <strong>Kick Drop Miner</strong>
+          <span>Samuro Control</span>
+        </div>
+      </div>
+      <div class="login-copy">
+        <span class="eyebrow">KİŞİSEL DROP MERKEZİ</span>
+        <h1 id="authTitle">Tekrar hoş geldin.</h1>
+        <p id="authDescription">Kendi Kick hesabınla güvenli madencilik alanına giriş yap.</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" type="button" data-auth-mode="login">Oturum Aç</button>
+        <button class="auth-tab" type="button" data-auth-mode="register">Hesap Oluştur</button>
+      </div>
+      <form id="loginForm" class="login-form">
+        <label for="username">Kullanıcı adı</label>
+        <input id="username" name="username" type="text" autocomplete="username"
+               value="admin" placeholder="Kullanıcı adın" minlength="3" maxlength="32" required autofocus>
+        <div id="emailField" class="hidden">
+          <label for="email">E-posta <span class="optional-label">isteğe bağlı</span></label>
+          <input id="email" name="email" type="email" autocomplete="email"
+                 placeholder="ornek@eposta.com" maxlength="160">
+        </div>
+        <label for="password">Şifre</label>
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password"
+                 placeholder="Şifreni gir" required autofocus>
+          <button id="togglePassword" class="icon-button" type="button" aria-label="Şifreyi göster">
+            <span class="eye-icon"></span>
+          </button>
+        </div>
+        <p id="loginError" class="form-error" role="alert"></p>
+        <button id="loginButton" class="button button-primary button-wide" type="submit">
+          <span id="authButtonText">Oturum Aç</span>
+          <svg class="button-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#chevron-right"></use></svg>
+        </button>
+      </form>
+      <div class="security-note">
+        <span class="status-dot online"></span>
+        <span>Her hesabın çerezleri ve madencilik sırası birbirinden ayrıdır.</span>
+      </div>
+    </section>
+  </main>
+  <script src="/static/login.js?v=20260613-1" defer></script>
+</body>
+</html>
