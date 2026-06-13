@@ -236,53 +236,152 @@
   </div>
 
   <div id="connectModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="connectModalTitle">
-    <div class="modal-card modal-large">
+    <div class="modal-card modal-connect">
       <button id="closeConnectModal" class="modal-close" aria-label="Kapat">×</button>
-      <span class="eyebrow">BAĞLANTI YÖNETİMİ</span>
-      <h2 id="connectModalTitle">Kick Hesabını Bağla</h2>
-      <p>Aşağıdaki yöntemlerden sana en kolay geleni seçerek Kick oturumunu bağlayabilirsin.</p>
-      
-      <div class="tabs">
-        <button class="tab-button active" data-tab="tab-bookmark">Yer İmi (Önerilen)</button>
-        <button class="tab-button" data-tab="tab-manual">Manuel Kod</button>
-        <button class="tab-button" data-tab="tab-login">Şifreyle Giriş</button>
+
+      <div class="connect-header">
+        <div class="connect-icon-wrap">
+          <svg viewBox="0 0 24 24" class="connect-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="eyebrow">HESAP BAĞLANTISI</span>
+        <h2 id="connectModalTitle">Kick Hesabını Bağla</h2>
+        <p>Aşağıdaki yöntemlerden birini seçerek Kick oturumunu güvenle bağla.</p>
       </div>
 
-      <div class="tab-content active" id="tab-bookmark">
-        <h3>Tek Tıkla Bağlan (Sihirli Yer İmi)</h3>
-        <p>En güvenli ve kolay yöntem! Tarayıcı yer imlerini (Sık Kullanılanlar) kullanarak saniyeler içinde bağlan.</p>
-        <ol class="steps-list" style="margin-bottom: 20px;">
-          <li>Aşağıdaki mavi butonu farenle tut ve tarayıcının üstündeki <b>Yer İmleri (Sık Kullanılanlar) çubuğuna</b> sürükle.</li>
-          <li>Ayrı bir sekmede <b>Kick.com</b>'a gir ve hesabına normal giriş yap.</li>
-          <li>Giriş yaptıktan sonra yer imlerine sürüklediğin o "KDM Bağlan" butonuna tıkla.</li>
-          <li>Çıkan ufak pencerede sana verilen kodu kopyalayıp yandaki <b>Manuel Kod</b> sekmesine yapıştır!</li>
-        </ol>
-        <div style="text-align: center; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-          <a href="javascript:(function(){let t=document.cookie.split('; ').find(row=>row.startsWith('session_token='));if(t){prompt('İşte Kick Token\'ın! Kopyala ve Kick Drop Miner paneline yapıştır:',t.split('=')[1]);}else{alert('Kick oturumu bulunamadı! Lütfen önce Kick.com\'a giriş yapın.');}})();" class="button button-primary" style="cursor: grab;" onclick="event.preventDefault(); alert('Lütfen bu butona tıklamak yerine farenizle tutup Yer İmleri (Sık Kullanılanlar) çubuğunuza sürükleyin!');">🔗 KDM Bağlan</a>
+      <div class="connect-tabs">
+        <button class="connect-tab active" data-tab="tab-bookmark">
+          <span class="connect-tab-icon">🔖</span>
+          <span class="connect-tab-label">Yer İmi</span>
+          <span class="connect-tab-badge">Önerilen</span>
+        </button>
+        <button class="connect-tab" data-tab="tab-login">
+          <span class="connect-tab-icon">🔐</span>
+          <span class="connect-tab-label">Şifreyle Giriş</span>
+        </button>
+        <button class="connect-tab" data-tab="tab-manual">
+          <span class="connect-tab-icon">⌨️</span>
+          <span class="connect-tab-label">Manuel Kod</span>
+        </button>
+      </div>
+
+      <!-- TAB: Bookmark -->
+      <div class="tab-panel active" id="tab-bookmark">
+        <div class="method-card">
+          <div class="method-steps">
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <div>
+                <strong>Butonu sürükle</strong>
+                <p>Aşağıdaki yeşil butonu tarayıcının <b>Yer İmleri çubuğuna</b> sürükleyip bırak.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <div>
+                <strong>Kick'e giriş yap</strong>
+                <p>Yeni sekmede <b>kick.com</b>'a git ve hesabına giriş yap.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <div>
+                <strong>Yer imine tıkla</strong>
+                <p>Kick'teyken yer imine tıkla, çıkan kodu kopyala ve <b>Manuel Kod</b> sekmesine yapıştır.</p>
+              </div>
+            </div>
+          </div>
+          <div class="bookmark-drag-zone">
+            <span class="drag-hint">↓ Aşağıdaki butonu sürükle ↓</span>
+            <a href="javascript:(function(){let t=document.cookie.split('; ').find(row=>row.startsWith('session_token='));if(t){prompt('İşte Kick Token\'ın! Kopyala ve Kick Drop Miner paneline yapıştır:',t.split('=')[1]);}else{alert('Kick oturumu bulunamadı! Lütfen önce Kick.com\'a giriş yapın.');}})();" class="bookmark-btn" onclick="event.preventDefault(); toast('Sürükle!', 'Bu butona tıklamak yerine farenle tutup Yer İmleri çubuğuna sürükle.', 'error');">🔗 KDM Bağlan</a>
+          </div>
         </div>
       </div>
 
-      <div class="tab-content hidden" id="tab-manual">
-        <h3>Manuel Kod Girişi</h3>
-        <p>Yer iminden aldığın veya F12 ile bulduğun <code>session_token</code> değerini buraya yapıştır.</p>
-        <form id="manualCookieForm">
-          <label for="cookieJsonModal">session_token veya çerez JSON içeriği</label>
-          <textarea id="cookieJsonModal" rows="5" spellcheck="false" autocomplete="off" placeholder="session_token değerini buraya yapıştır"></textarea>
-          <button id="saveCookiesModalButton" class="button button-primary button-wide" type="submit" style="margin-top: 15px;">Çerezleri Kaydet</button>
-        </form>
+      <!-- TAB: Direct Login -->
+      <div class="tab-panel hidden" id="tab-login">
+        <div class="method-card">
+          <!-- Step 1: Credentials -->
+          <div id="loginStep1" class="login-step active">
+            <div class="security-note">
+              <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+              <span>Şifren sunucuda saklanmaz, yalnızca anlık giriş için kullanılır.</span>
+            </div>
+            <form id="directLoginForm">
+              <div class="form-group">
+                <label for="kickUsername">E-posta veya Kullanıcı Adı</label>
+                <div class="input-icon-wrap">
+                  <svg viewBox="0 0 24 24" class="input-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <input id="kickUsername" type="text" placeholder="ornek@mail.com" autocomplete="off" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="kickPassword">Şifre</label>
+                <div class="input-icon-wrap">
+                  <svg viewBox="0 0 24 24" class="input-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <input id="kickPassword" type="password" placeholder="••••••••" autocomplete="off" required>
+                </div>
+              </div>
+              <button class="button button-primary button-wide" type="submit" id="directLoginButton">
+                <span class="btn-content">Giriş Yap</span>
+                <span class="btn-spinner hidden"></span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Step 2: Email Verification Code -->
+          <div id="loginStep2" class="login-step hidden">
+            <div class="verify-code-header">
+              <div class="verify-icon-wrap">
+                <svg viewBox="0 0 24 24" width="32" height="32"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#53fc18" stroke-width="2" fill="none"/><polyline points="22,6 12,13 2,6" stroke="#53fc18" stroke-width="2" fill="none"/></svg>
+              </div>
+              <h3>E-posta Doğrulama</h3>
+              <p>Kick, e-posta adresine bir doğrulama kodu gönderdi.<br>Lütfen gelen kutunu kontrol edip kodu aşağıya gir.</p>
+            </div>
+            <form id="verifyCodeForm">
+              <div class="code-input-wrap">
+                <input id="verifyCode" type="text" maxlength="6" autocomplete="one-time-code" placeholder="— — — — — —" class="code-input">
+              </div>
+              <button class="button button-primary button-wide" type="submit" id="verifyCodeButton">
+                <span class="btn-content">Doğrula ve Bağlan</span>
+                <span class="btn-spinner hidden"></span>
+              </button>
+              <button type="button" class="button button-ghost button-wide" id="backToLoginStep1" style="margin-top:8px;">← Geri Dön</button>
+            </form>
+          </div>
+
+          <!-- Login Result -->
+          <div id="loginResult" class="login-step hidden">
+            <div class="result-icon" id="loginResultIcon"></div>
+            <h3 id="loginResultTitle"></h3>
+            <p id="loginResultText"></p>
+            <button type="button" class="button button-secondary button-wide" id="loginResultRetry">Tekrar Dene</button>
+          </div>
+        </div>
       </div>
 
-      <div class="tab-content hidden" id="tab-login">
-        <h3>Doğrudan Giriş (Arka Plan Botu)</h3>
-        <div class="security-warning" style="margin-bottom:15px;"><strong>Uyarı:</strong> Kick'in katı bot korumaları (Cloudflare) nedeniyle otomatik girişler sunucularda engellenebilir. Mümkünse Yer İmi yöntemini kullanın.</div>
-        <form id="directLoginForm">
-          <label for="kickUsername">Kick E-posta veya Kullanıcı Adı</label>
-          <input id="kickUsername" type="text" autocomplete="off" required>
-          <label for="kickPassword">Kick Şifresi</label>
-          <input id="kickPassword" type="password" autocomplete="off" required>
-          <p class="field-help" style="margin-bottom: 15px;">Şifreniz sistemde hiçbir şekilde saklanmaz, sadece bir kerelik oturum açma botunda kullanılır.</p>
-          <button class="button button-primary button-wide" type="submit" id="directLoginButton">Otomatik Giriş Yap</button>
-        </form>
+      <!-- TAB: Manual -->
+      <div class="tab-panel hidden" id="tab-manual">
+        <div class="method-card">
+          <div class="security-note">
+            <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="16" x2="12" y2="12" stroke="currentColor" stroke-width="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Yer iminden aldığın veya F12 → Application → Cookies → <code>session_token</code> değerini buraya yapıştır.</span>
+          </div>
+          <form id="manualCookieForm">
+            <div class="form-group">
+              <label for="cookieJsonModal">session_token değeri</label>
+              <textarea id="cookieJsonModal" rows="4" spellcheck="false" autocomplete="off" placeholder="Buraya yapıştır..."></textarea>
+            </div>
+            <button id="saveCookiesModalButton" class="button button-primary button-wide" type="submit">
+              <span class="btn-content">Oturumu Kaydet</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div id="connectStatus" class="connect-status hidden">
+        <span class="connect-status-dot"></span>
+        <span id="connectStatusText"></span>
       </div>
     </div>
   </div>

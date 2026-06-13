@@ -776,17 +776,21 @@ $("#campaignGrid").addEventListener("click", async event => {
 function openConnectModal() {
   $("#connectModal").classList.remove("hidden");
 }
+function closeConnectModal() {
+  $("#connectModal").classList.add("hidden");
+  // Reset login to step 1
+  showLoginStep("loginStep1");
+}
 $("#openConnectModalButton")?.addEventListener("click", openConnectModal);
 $("#openConnectModalFromSettings")?.addEventListener("click", openConnectModal);
-$("#closeConnectModal")?.addEventListener("click", () => $("#connectModal").classList.add("hidden"));
+$("#closeConnectModal")?.addEventListener("click", closeConnectModal);
 
 /* Tabs Switching */
-$$("#connectModal .tab-button").forEach(btn => {
+$$("#connectModal .connect-tab").forEach(btn => {
   btn.addEventListener("click", () => {
-    $$("#connectModal .tab-button").forEach(b => b.classList.remove("active"));
-    $$("#connectModal .tab-content").forEach(c => c.classList.remove("active", "hidden"));
-    $$("#connectModal .tab-content").forEach(c => c.classList.add("hidden"));
-    
+    $$("#connectModal .connect-tab").forEach(b => b.classList.remove("active"));
+    $$("#connectModal .tab-panel").forEach(c => { c.classList.remove("active"); c.classList.add("hidden"); });
+
     btn.classList.add("active");
     const target = $(`#${btn.dataset.tab}`);
     target.classList.remove("hidden");
@@ -794,11 +798,47 @@ $$("#connectModal .tab-button").forEach(btn => {
   });
 });
 
+/* Login Step Navigation */
+function showLoginStep(stepId) {
+  $$("#tab-login .login-step").forEach(s => { s.classList.remove("active"); s.classList.add("hidden"); });
+  const step = $(`#${stepId}`);
+  if (step) { step.classList.remove("hidden"); step.classList.add("active"); }
+}
+
+function showLoginResult(success, title, text) {
+  const icon = $("#loginResultIcon");
+  icon.className = `result-icon ${success ? "success" : "error"}`;
+  icon.textContent = success ? "✓" : "✗";
+  $("#loginResultTitle").textContent = title;
+  $("#loginResultText").textContent = text;
+  showLoginStep("loginResult");
+}
+
+function setButtonLoading(btn, loading) {
+  const content = btn.querySelector(".btn-content");
+  const spinner = btn.querySelector(".btn-spinner");
+  if (content) content.classList.toggle("hidden", loading);
+  if (spinner) spinner.classList.toggle("hidden", !loading);
+  btn.disabled = loading;
+}
+
+function showConnectStatus(msg, isError) {
+  const el = $("#connectStatus");
+  el.classList.remove("hidden", "error");
+  if (isError) el.classList.add("error");
+  $("#connectStatusText").textContent = msg;
+  if (!isError) setTimeout(() => el.classList.add("hidden"), 5000);
+}
+
+/* Back to Step 1 */
+$("#backToLoginStep1")?.addEventListener("click", () => showLoginStep("loginStep1"));
+$("#loginResultRetry")?.addEventListener("click", () => showLoginStep("loginStep1"));
+
 /* Manual Cookie Submit */
 $("#manualCookieForm")?.addEventListener("submit", async e => {
   e.preventDefault();
   const btn = $("#saveCookiesModalButton");
-  btn.disabled = true;
+  setButtonLoading(btn, true);
   try {
     const raw = $("#cookieJsonModal").value.trim();
     if (!raw) throw new Error("Lütfen session_token girin.");
@@ -811,43 +851,84 @@ $("#manualCookieForm")?.addEventListener("submit", async e => {
     }
     await request("/api/cookies", {method: "POST", body: JSON.stringify({cookies})});
     $("#cookieJsonModal").value = "";
-    $("#connectModal").classList.add("hidden");
-    toast("Kick oturumu bağlandı", "Hesabınız başarıyla entegre edildi.");
+    closeConnectModal();
+    toast("Kick oturumu bağlandı", "Hesabın başarıyla entegre edildi.");
+    showConnectStatus("Kick oturumu başarıyla bağlandı!", false);
     await refreshState();
-  } catch (error) { toast("Bağlantı başarısız", error.message, "error"); }
-  btn.disabled = false;
+  } catch (error) {
+    toast("Bağlantı başarısız", error.message, "error");
+    showConnectStatus(error.message, true);
+  }
+  setButtonLoading(btn, false);
 });
 
-/* Direct Login Submit */
+/* Direct Login Submit (Step 1) */
+let pendingLoginSession = null;
+
 $("#directLoginForm")?.addEventListener("submit", async e => {
   e.preventDefault();
   const btn = $("#directLoginButton");
-  btn.disabled = true;
-  btn.textContent = "Giriş yapılıyor, lütfen bekleyin...";
+  setButtonLoading(btn, true);
   try {
     const username = $("#kickUsername").value.trim();
     const password = $("#kickPassword").value.trim();
     if (!username || !password) throw new Error("Kullanıcı adı ve şifre zorunludur.");
-    
+
     const res = await request("/api/kick-login", {
-      method: "POST", 
+      method: "POST",
       body: JSON.stringify({ username, password })
     });
-    
+
     if (res.success) {
       $("#kickUsername").value = "";
       $("#kickPassword").value = "";
-      $("#connectModal").classList.add("hidden");
-      toast("Giriş Başarılı", "Kick hesabınız başarıyla bağlandı.");
+      closeConnectModal();
+      toast("Giriş Başarılı", "Kick hesabın başarıyla bağlandı!");
+      showConnectStatus("Kick hesabı başarıyla bağlandı!", false);
+      await refreshState();
+    } else if (res.needs_verification) {
+      // Kick sent email code
+      pendingLoginSession = res.session_id;
+      showLoginStep("loginStep2");
+      toast("Doğrulama kodu gönderildi", "E-postanı kontrol et.");
+    } else {
+      showLoginResult(false, "Giriş Başarısız", res.error || "Bilinmeyen bir hata oluştu.");
+    }
+  } catch (error) {
+    showLoginResult(false, "Bağlantı Hatası", error.message);
+  }
+  setButtonLoading(btn, false);
+});
+
+/* Verify Code Submit (Step 2) */
+$("#verifyCodeForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("#verifyCodeButton");
+  setButtonLoading(btn, true);
+  try {
+    const code = $("#verifyCode").value.trim();
+    if (!code || code.length < 4) throw new Error("Lütfen geçerli bir doğrulama kodu gir.");
+
+    const res = await request("/api/kick-verify", {
+      method: "POST",
+      body: JSON.stringify({ code, session_id: pendingLoginSession })
+    });
+
+    if (res.success) {
+      $("#verifyCode").value = "";
+      pendingLoginSession = null;
+      closeConnectModal();
+      toast("Doğrulama Başarılı", "Kick hesabın başarıyla bağlandı!");
+      showConnectStatus("Kick hesabı doğrulandı ve bağlandı!", false);
       await refreshState();
     } else {
-      throw new Error(res.error || "Giriş yapılamadı.");
+      showLoginResult(false, "Doğrulama Başarısız", res.error || "Kod geçersiz veya süresi dolmuş.");
     }
-  } catch (error) { 
-    toast("Giriş Başarısız", error.message, "error"); 
+  } catch (error) {
+    showLoginResult(false, "Doğrulama Hatası", error.message);
   }
-  btn.disabled = false;
-  btn.textContent = "Otomatik Giriş Yap";
+  setButtonLoading(btn, false);
+});
 });
 
 document.addEventListener("error", event => {

@@ -227,6 +227,11 @@ class KickLoginBody(BaseModel):
     password: str
 
 
+class VerifyCodeBody(BaseModel):
+    code: str
+    session_id: str
+
+
 class ActiveBody(BaseModel):
     active: bool
 
@@ -559,8 +564,29 @@ def replace_cookies(body: CookieBody, user=Depends(require_csrf)):
 async def kick_login(body: KickLoginBody, user=Depends(require_csrf)):
     from core.login import perform_kick_login
     import asyncio
-    
+
     result = await asyncio.to_thread(perform_kick_login, body.username, body.password)
+    if result.get("success"):
+        services.get(user).replace_cookies(result["cookies"])
+        return {"success": True}
+    elif result.get("needs_verification"):
+        return {
+            "success": False,
+            "needs_verification": True,
+            "session_id": result.get("session_id", ""),
+        }
+    else:
+        return {"success": False, "error": result.get("error")}
+
+
+@app.post("/api/kick-verify")
+async def kick_verify(body: VerifyCodeBody, user=Depends(require_csrf)):
+    from core.login import submit_verification_code
+    import asyncio
+
+    result = await asyncio.to_thread(
+        submit_verification_code, body.session_id, body.code
+    )
     if result.get("success"):
         services.get(user).replace_cookies(result["cookies"])
         return {"success": True}
