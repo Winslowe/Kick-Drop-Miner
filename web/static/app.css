@@ -599,6 +599,43 @@ input:focus, textarea:focus { border-color: rgba(83,252,24,.35); box-shadow: 0 0
 .toast strong { display: block; margin-bottom: 3px; font-size: 11px; }
 .toast span { color: var(--muted); font-size: 10px; line-height: 1.45; }
 
+.modal-card.modal-large { width: 500px; max-width: 95%; }
+
+/* Tabs System */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.tab-button {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+}
+.tab-button:hover { color: #fff; }
+.tab-button.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn .3s ease-out; }
+.tab-content h3 { margin: 0 0 10px; font-size: 15px; color: #fff; }
+.tab-content p { font-size: 12px; color: var(--muted); margin-bottom: 15px; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .boot-overlay {
   position: fixed;
   inset: 0;

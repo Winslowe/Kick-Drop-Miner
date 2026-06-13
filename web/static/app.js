@@ -173,7 +173,10 @@ function renderState(state) {
   });
   $("#browserCount").textContent = `${state.browser_count} aktif`;
   $("#inventoryCount").textContent = state.inventory.campaigns.length;
-  $("#cookieMini").textContent = state.cookie.available && !state.cookie.expired ? "Hazır" : "Gerekli";
+  const cookieReady = state.cookie.available && !state.cookie.expired;
+  $("#cookieMini").textContent = cookieReady ? "Bağlı" : "Bağlı Değil";
+  $("#cookieMini").className = `state-badge ${cookieReady ? "completed" : "error"}`;
+  $("#cookieMini").style.cursor = "pointer";
   $("#currentUsername").textContent = state.user.username;
   $("#currentRole").textContent = state.user.role === "admin" ? "Yönetici" : "Üye";
   $("#adminNav").classList.toggle("hidden", state.user.role !== "admin");
@@ -769,29 +772,82 @@ $("#campaignGrid").addEventListener("click", async event => {
   }
 });
 
-$("#saveCookiesButton").addEventListener("click", async () => {
+/* Connect Modal Logic */
+function openConnectModal() {
+  $("#connectModal").classList.remove("hidden");
+}
+$("#openConnectModalButton")?.addEventListener("click", openConnectModal);
+$("#openConnectModalFromSettings")?.addEventListener("click", openConnectModal);
+$("#closeConnectModal")?.addEventListener("click", () => $("#connectModal").classList.add("hidden"));
+
+/* Tabs Switching */
+$$("#connectModal .tab-button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    $$("#connectModal .tab-button").forEach(b => b.classList.remove("active"));
+    $$("#connectModal .tab-content").forEach(c => c.classList.remove("active", "hidden"));
+    $$("#connectModal .tab-content").forEach(c => c.classList.add("hidden"));
+    
+    btn.classList.add("active");
+    const target = $(`#${btn.dataset.tab}`);
+    target.classList.remove("hidden");
+    target.classList.add("active");
+  });
+});
+
+/* Manual Cookie Submit */
+$("#manualCookieForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("#saveCookiesModalButton");
+  btn.disabled = true;
   try {
-    const raw = $("#cookieJson").value.trim();
-    if (!raw) throw new Error("session_token veya çerez JSON içeriği girin.");
+    const raw = $("#cookieJsonModal").value.trim();
+    if (!raw) throw new Error("Lütfen session_token girin.");
     let cookies;
     try {
       const parsed = JSON.parse(raw);
       cookies = Array.isArray(parsed) ? parsed : parsed.cookies;
     } catch {
-      cookies = [{
-        name: "session_token",
-        value: raw,
-        domain: ".kick.com",
-        path: "/",
-        secure: true,
-        httpOnly: true,
-      }];
+      cookies = [{ name: "session_token", value: raw, domain: ".kick.com", path: "/", secure: true, httpOnly: true }];
     }
     await request("/api/cookies", {method: "POST", body: JSON.stringify({cookies})});
-    $("#cookieJson").value = "";
-    toast("Kick oturumu güncellendi", "Yeni çerezler güvenli biçimde kaydedildi.");
+    $("#cookieJsonModal").value = "";
+    $("#connectModal").classList.add("hidden");
+    toast("Kick oturumu bağlandı", "Hesabınız başarıyla entegre edildi.");
     await refreshState();
-  } catch (error) { toast("Çerezler kaydedilemedi", error.message, "error"); }
+  } catch (error) { toast("Bağlantı başarısız", error.message, "error"); }
+  btn.disabled = false;
+});
+
+/* Direct Login Submit */
+$("#directLoginForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("#directLoginButton");
+  btn.disabled = true;
+  btn.textContent = "Giriş yapılıyor, lütfen bekleyin...";
+  try {
+    const username = $("#kickUsername").value.trim();
+    const password = $("#kickPassword").value.trim();
+    if (!username || !password) throw new Error("Kullanıcı adı ve şifre zorunludur.");
+    
+    const res = await request("/api/kick-login", {
+      method: "POST", 
+      body: JSON.stringify({ username, password })
+    });
+    
+    if (res.success) {
+      $("#kickUsername").value = "";
+      $("#kickPassword").value = "";
+      $("#connectModal").classList.add("hidden");
+      toast("Giriş Başarılı", "Kick hesabınız başarıyla bağlandı.");
+      await refreshState();
+    } else {
+      throw new Error(res.error || "Giriş yapılamadı.");
+    }
+  } catch (error) { 
+    toast("Giriş Başarısız", error.message, "error"); 
+  }
+  btn.disabled = false;
+  btn.textContent = "Otomatik Giriş Yap";
 });
 
 document.addEventListener("error", event => {

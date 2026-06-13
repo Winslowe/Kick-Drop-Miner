@@ -57,10 +57,10 @@
           <span>Tarayıcı</span>
           <strong id="browserCount">0 aktif</strong>
         </div>
-        <div class="health-row">
-          <span>Kick oturumu</span>
-          <strong id="cookieMini">Kontrol ediliyor</strong>
-        </div>
+        <button id="openConnectModalButton" class="sidebar-console-button" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 8px;">
+          <span>Kick hesabı</span>
+          <strong id="cookieMini" class="state-badge error" style="cursor: pointer;">Bağlı Değil</strong>
+        </button>
         <button id="openConsoleButton" class="sidebar-console-button">
           <span><svg class="ui-icon" viewBox="0 0 24 24"><use href="/static/icons.svg?v=20260612-2#activity"></use></svg> Sistem kaydı</span>
           <strong id="lastLogMini">Hazır</strong>
@@ -193,21 +193,9 @@
               <div><h3>Kick oturum çerezleri</h3><p>Drop ilerlemesini hesabınla eşleştirmek için kullanılır.</p></div>
               <span id="cookieBadge" class="state-badge waiting">KONTROL</span>
             </div>
-            <details class="cookie-guide" open>
-              <summary>Adım adım çerez kurulumu</summary>
-              <ol>
-                <li><b>Kick hesabına giriş yap.</b><span>Kendi bilgisayarında <strong>kick.com</strong> sitesini aç ve drop kullanacağın hesapla oturum aç.</span></li>
-                <li><b>Geliştirici araçlarını aç.</b><span><kbd>F12</kbd> tuşuna bas. Üst menüden <strong>Application</strong>, Türkçe tarayıcıda <strong>Uygulama</strong> sekmesini seç.</span></li>
-                <li><b>Kick çerezlerini bul.</b><span>Sol tarafta <strong>Storage → Cookies → https://kick.com</strong> yolunu aç.</span></li>
-                <li><b>session_token değerini kopyala.</b><span>Listede <code>session_token</code> satırını bul; yalnız <strong>Value / Değer</strong> hücresini eksiksiz kopyala.</span></li>
-                <li><b>Aşağıya yapıştır ve kaydet.</b><span>Tek tokenı doğrudan yapıştırabilirsin. Elinde tam çerez JSON listesi varsa onu da kabul eder.</span></li>
-              </ol>
-              <div class="security-warning"><strong>Güvenlik:</strong> Bu değer hesabının oturum anahtarıdır. Kimseyle paylaşma; yalnız kendi sunucundaki bu panele gir.</div>
-            </details>
-            <label for="cookieJson">session_token veya çerez JSON içeriği</label>
-            <textarea id="cookieJson" rows="7" spellcheck="false" autocomplete="off" placeholder="session_token değerini buraya yapıştır&#10;&#10;veya&#10;&#10;[{&quot;name&quot;:&quot;session_token&quot;,&quot;value&quot;:&quot;...&quot;,&quot;domain&quot;:&quot;.kick.com&quot;}]"></textarea>
-            <div class="field-help">Kaydedilen değerler yalnız sunucunun özel veri klasöründe tutulur ve konsolda hiçbir zaman gösterilmez.</div>
-            <button id="saveCookiesButton" class="button button-secondary">Çerezleri Güvenle Güncelle</button>
+            <div style="margin-top: 15px;">
+              <button id="openConnectModalFromSettings" class="button button-secondary">Kick Bağlantısını Yönet</button>
+            </div>
           </article>
 
           <article class="settings-card">
@@ -245,6 +233,58 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="connectModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="connectModalTitle">
+    <div class="modal-card modal-large">
+      <button id="closeConnectModal" class="modal-close" aria-label="Kapat">×</button>
+      <span class="eyebrow">BAĞLANTI YÖNETİMİ</span>
+      <h2 id="connectModalTitle">Kick Hesabını Bağla</h2>
+      <p>Aşağıdaki yöntemlerden sana en kolay geleni seçerek Kick oturumunu bağlayabilirsin.</p>
+      
+      <div class="tabs">
+        <button class="tab-button active" data-tab="tab-bookmark">Yer İmi (Önerilen)</button>
+        <button class="tab-button" data-tab="tab-manual">Manuel Kod</button>
+        <button class="tab-button" data-tab="tab-login">Şifreyle Giriş</button>
+      </div>
+
+      <div class="tab-content active" id="tab-bookmark">
+        <h3>Tek Tıkla Bağlan (Sihirli Yer İmi)</h3>
+        <p>En güvenli ve kolay yöntem! Tarayıcı yer imlerini (Sık Kullanılanlar) kullanarak saniyeler içinde bağlan.</p>
+        <ol class="steps-list" style="margin-bottom: 20px;">
+          <li>Aşağıdaki mavi butonu farenle tut ve tarayıcının üstündeki <b>Yer İmleri (Sık Kullanılanlar) çubuğuna</b> sürükle.</li>
+          <li>Ayrı bir sekmede <b>Kick.com</b>'a gir ve hesabına normal giriş yap.</li>
+          <li>Giriş yaptıktan sonra yer imlerine sürüklediğin o "KDM Bağlan" butonuna tıkla.</li>
+          <li>Çıkan ufak pencerede sana verilen kodu kopyalayıp yandaki <b>Manuel Kod</b> sekmesine yapıştır!</li>
+        </ol>
+        <div style="text-align: center; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+          <a href="javascript:(function(){let t=document.cookie.split('; ').find(row=>row.startsWith('session_token='));if(t){prompt('İşte Kick Token\'ın! Kopyala ve Kick Drop Miner paneline yapıştır:',t.split('=')[1]);}else{alert('Kick oturumu bulunamadı! Lütfen önce Kick.com\'a giriş yapın.');}})();" class="button button-primary" style="cursor: grab;" onclick="event.preventDefault(); alert('Lütfen bu butona tıklamak yerine farenizle tutup Yer İmleri (Sık Kullanılanlar) çubuğunuza sürükleyin!');">🔗 KDM Bağlan</a>
+        </div>
+      </div>
+
+      <div class="tab-content hidden" id="tab-manual">
+        <h3>Manuel Kod Girişi</h3>
+        <p>Yer iminden aldığın veya F12 ile bulduğun <code>session_token</code> değerini buraya yapıştır.</p>
+        <form id="manualCookieForm">
+          <label for="cookieJsonModal">session_token veya çerez JSON içeriği</label>
+          <textarea id="cookieJsonModal" rows="5" spellcheck="false" autocomplete="off" placeholder="session_token değerini buraya yapıştır"></textarea>
+          <button id="saveCookiesModalButton" class="button button-primary button-wide" type="submit" style="margin-top: 15px;">Çerezleri Kaydet</button>
+        </form>
+      </div>
+
+      <div class="tab-content hidden" id="tab-login">
+        <h3>Doğrudan Giriş (Arka Plan Botu)</h3>
+        <div class="security-warning" style="margin-bottom:15px;"><strong>Uyarı:</strong> Kick'in katı bot korumaları (Cloudflare) nedeniyle otomatik girişler sunucularda engellenebilir. Mümkünse Yer İmi yöntemini kullanın.</div>
+        <form id="directLoginForm">
+          <label for="kickUsername">Kick E-posta veya Kullanıcı Adı</label>
+          <input id="kickUsername" type="text" autocomplete="off" required>
+          <label for="kickPassword">Kick Şifresi</label>
+          <input id="kickPassword" type="password" autocomplete="off" required>
+          <p class="field-help" style="margin-bottom: 15px;">Şifreniz sistemde hiçbir şekilde saklanmaz, sadece bir kerelik oturum açma botunda kullanılır.</p>
+          <button class="button button-primary button-wide" type="submit" id="directLoginButton">Otomatik Giriş Yap</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <div id="addModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">

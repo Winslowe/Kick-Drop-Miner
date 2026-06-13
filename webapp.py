@@ -222,6 +222,11 @@ class CookieBody(BaseModel):
     cookies: list[dict]
 
 
+class KickLoginBody(BaseModel):
+    username: str
+    password: str
+
+
 class ActiveBody(BaseModel):
     active: bool
 
@@ -549,6 +554,18 @@ def replace_cookies(body: CookieBody, user=Depends(require_csrf)):
         "ok": True,
         "cookie": services.get(user).replace_cookies(body.cookies),
     }
+
+@app.post("/api/kick-login")
+async def kick_login(body: KickLoginBody, user=Depends(require_csrf)):
+    from core.login import perform_kick_login
+    import asyncio
+    
+    result = await asyncio.to_thread(perform_kick_login, body.username, body.password)
+    if result.get("success"):
+        services.get(user).replace_cookies(result["cookies"])
+        return {"success": True}
+    else:
+        return {"success": False, "error": result.get("error")}
 
 
 @app.post("/api/logs/clear")
