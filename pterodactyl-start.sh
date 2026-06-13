@@ -56,6 +56,9 @@ while [ ! -S "/tmp/.X11-unix/X${display_number}" ]; do
   sleep 0.1
 done
 
+echo "Checking for updates from GitHub..."
+git pull origin main || echo "git pull failed, continuing with existing code"
+
 echo "Started successfully"
 exec python -m uvicorn webapp:app \
   --host 0.0.0.0 \
