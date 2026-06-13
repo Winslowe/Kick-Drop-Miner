@@ -1648,29 +1648,29 @@ input, textarea { background: #080d0a; }
   background: var(--panel);
 }
 .admin-stat-grid small, .admin-stat-grid strong, .admin-stat-grid span { display: block; }
-.admin-stat-grid small { color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
-.admin-stat-grid strong { margin: 8px 0 4px; font-size: 28px; }
-.admin-stat-grid span { color: var(--muted-2); font-size: 12px; }
+.admin-stat-grid small { color: var(--muted); font-size: 9px; text-transform: uppercase; font-weight: 700; }
+.admin-stat-grid strong { margin: 8px 0 4px; font-size: 26px; }
+.admin-stat-grid span { color: var(--muted-2); font-size: 9px; }
 .admin-table-shell { margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--panel); }
 .admin-table-head, .admin-user-row {
   display: grid;
-  grid-template-columns: minmax(220px,1.4fr) minmax(150px,1fr) minmax(130px,.8fr) minmax(120px,.7fr) minmax(260px,1.4fr);
-  gap: 20px;
+  grid-template-columns: minmax(210px,1.3fr) minmax(150px,.9fr) minmax(120px,.7fr) minmax(110px,.6fr) minmax(240px,1.2fr);
+  gap: 16px;
   align-items: center;
 }
-.admin-table-head { padding: 15px 20px; color: var(--muted-2); background: rgba(255,255,255,.018); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.admin-user-row { padding: 18px 20px; border-top: 1px solid var(--line); }
+.admin-table-head { padding: 13px 17px; color: var(--muted-2); background: rgba(255,255,255,.018); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-user-row { padding: 16px 17px; border-top: 1px solid var(--line); }
 .admin-user-row.disabled { opacity: .52; }
 .admin-user-row > div > strong, .admin-user-row > div > small { display: block; }
-.admin-user-row > div > strong { font-size: 13px; font-weight: 600; color: #fff; }
-.admin-user-row > div > small { margin-top: 5px; color: var(--muted-2); font-size: 11px; }
-.admin-user-cell { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.admin-avatar { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border-radius: 12px; color: var(--green); background: rgba(89,242,56,.08); font-size: 16px; font-weight: 800; }
+.admin-user-row > div > strong { font-size: 11px; font-weight: 600; color: #fff; }
+.admin-user-row > div > small { margin-top: 5px; color: var(--muted-2); font-size: 9px; }
+.admin-user-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.admin-avatar { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 11px; color: var(--green); background: rgba(89,242,56,.08); font-size: 11px; font-weight: 850; }
 .admin-user-cell > span:last-child { min-width: 0; }
 .admin-user-cell strong, .admin-user-cell small, .admin-user-cell em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.admin-user-cell strong { font-size: 14px; color: #fff; font-weight: 600; }
-.admin-user-cell small { margin: 4px 0; color: var(--muted); font-size: 12px; }
-.admin-user-cell em { color: var(--muted-2); font-size: 10px; font-style: normal; text-transform: uppercase; letter-spacing: 0.05em; }
+.admin-user-cell strong { font-size: 12px; color: #fff; font-weight: 600; }
+.admin-user-cell small { margin: 3px 0; color: var(--muted); font-size: 9px; }
+.admin-user-cell em { color: var(--muted-2); font-size: 8px; font-style: normal; text-transform: uppercase; letter-spacing: 0.05em; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .admin-actions .button { min-width: 0; }
 .admin-tools-grid {
@@ -1707,16 +1707,16 @@ input, textarea { background: #080d0a; }
   display: block;
 }
 .admin-detail-list small, .admin-cookie-row small {
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 9px;
 }
 .admin-cookie-row code {
   max-width: 62%;
   overflow: auto;
   color: #d9ffd1;
-  font-size: 13px;
-  padding: 6px 10px;
+  font-size: 10px;
+  padding: 4px 8px;
   background: rgba(83, 252, 24, 0.1);
   border-radius: 6px;
   white-space: nowrap;

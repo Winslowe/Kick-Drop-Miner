@@ -68,7 +68,7 @@ AUTO_RESUME_DELAY_SECONDS = max(
     0,
     min(300, int(os.environ.get("KDM_AUTO_RESUME_DELAY_SECONDS", "45"))),
 )
-MAX_ACTIVE_MINERS = max(1, int(os.environ.get("KDM_MAX_ACTIVE_MINERS", "9999")))
+MAX_ACTIVE_MINERS = 9999
 MAX_REQUEST_BYTES = max(
     16 * 1024,
     int(os.environ.get("KDM_MAX_REQUEST_BYTES", str(256 * 1024))),
