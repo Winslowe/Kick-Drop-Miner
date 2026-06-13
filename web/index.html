@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090d12">
   <title>Kick Drop Miner • Samuro Control</title>
   <link rel="icon" href="/assets/logo.png">
-  <link rel="stylesheet" href="/static/app.css?v=20260613-13">
+  <link rel="stylesheet" href="/static/app.css?v=20260613-15">
 </head>
 <body>
   <div id="bootOverlay" class="boot-overlay">
@@ -270,6 +270,12 @@
       <!-- TAB: Bookmark -->
       <div class="tab-panel active" id="tab-bookmark">
         <div class="method-card">
+          <div class="tutorial-video-wrapper">
+            <video class="tutorial-video" controls muted playsinline poster="/assets/logo.png">
+              <source src="/assets/tutorial.mp4" type="video/mp4">
+              Tarayıcınız video etiketini desteklemiyor.
+            </video>
+          </div>
           <div class="method-steps">
             <div class="step-item">
               <span class="step-num">1</span>
@@ -433,6 +439,6 @@
   </div>
 
   <div id="toastStack" class="toast-stack" aria-live="polite"></div>
-  <script src="/static/app.js?v=20260613-14" defer></script>
+  <script src="/static/app.js?v=20260613-15" defer></script>
 </body>
 </html>
