@@ -929,7 +929,6 @@ $("#verifyCodeForm")?.addEventListener("submit", async e => {
   }
   setButtonLoading(btn, false);
 });
-});
 
 document.addEventListener("error", event => {
   const image = event.target;
