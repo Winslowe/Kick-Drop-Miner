@@ -1,67 +1,75 @@
 <div align="center">
-  <img src="assets/screenshot.png" alt="Kick Drop Miner Dashboard" width="800" />
-  <br/><br/>
+  <img src="assets/screenshot.png" alt="Kick Drop Miner Dashboard" width="850" />
   
+  <br/>
+
   # ⛏️ Kick Drop Miner
   
-  *Kick drop kampanyalarını doğrulanmış video oynatımı ve Kick sunucu ilerlemesiyle otomatik olarak takip eden akıllı madenci.*
-  
-  [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-  [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Ubuntu-lightgrey.svg)]()
-  [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
+  **Kick drop kampanyalarını doğrulanmış video oynatımı ve Kick sunucu ilerlemesiyle otomatik olarak takip eden akıllı ve yenilmez madenci.**
+
+  <p align="center">
+    <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-blue.svg?style=for-the-badge&logo=python" alt="Python"></a>
+    <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Ubuntu-lightgrey.svg?style=for-the-badge&logo=linux" alt="Platform"></a>
+    <a href="#"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License"></a>
+  </p>
+
+  <p align="center">
+    <a href="#-proje-hakkında">Proje Hakkında</a> •
+    <a href="#-öne-çıkan-özellikler">Özellikler</a> •
+    <a href="#-kurulum-ve-çalıştırma">Kurulum</a> •
+    <a href="#-kick-çerezi-session-token-nasıl-alınır">Kullanım Rehberi</a>
+  </p>
 </div>
 
 ---
 
 ## 🌟 Proje Hakkında
 
-**Kick Drop Miner**, arka planda Kick yayınlarını izleyerek droplarınızı otomatik olarak toplayan gelişmiş bir otomasyon aracıdır. Gelişmiş doğrulama sistemleri sayesinde sadece yayın açıkken ilerleme kaydeder ve gereksiz sistem kaynağı tüketimini önler.
+**Kick Drop Miner**, arka planda Kick yayınlarını izleyerek ödüllerinizi (droplarınızı) otomatik olarak toplayan son teknoloji bir otomasyon aracıdır. Gelişmiş sunucu tabanlı doğrulama mimarisi sayesinde sadece yayın gerçekten canlıyken ve video akışı varken ilerleme kaydeder, böylece gereksiz kaynak tüketiminin önüne geçer.
 
-Proje iki farklı arayüz seçeneği sunar:
-- 🌐 `webapp.py`: **Ubuntu/Pterodactyl** için modern web paneli (7/24 Sunucu çalışması için ideal)
-- 🖥️ `main.py`: **Windows** için eski masaüstü arayüzü
+Sistem ihtiyaçlarınıza göre iki farklı kullanım sunar:
+- 🌐 **Web Paneli (`webapp.py`)**: 7/24 Pterodactyl veya Ubuntu sunucularında çalışması için tasarlanmış modern bir arayüz.
+- 🖥️ **Masaüstü Arayüzü (`main.py`)**: Windows bilgisayarlarında kullanmak isteyenler için lokal uygulama.
 
 ---
 
 ## 🚀 Öne Çıkan Özellikler
 
 ### 🛡️ Gelişmiş Madenci Motoru (Sunucu Sürümü)
-- **Sıfır Kaynak Tüketimi**: Boştayken açık tarayıcı sayısı `0`dır. Yalnızca madencilik sırasında `1` Firefox (veya Chrome) açılır.
-- **Akıllı Doğrulama**: Video süresi yalnız kanal canlıysa ve `currentTime` (video süresi) gerçekten ilerliyorsa artar.
-- **WebSocket Kontrolü**: Kick izleyici tokenı, WebSocket bağlantısı ve kanal handshake mesajları sıkı bir şekilde doğrulanır.
-- **API Senkronizasyonu**: Drop ilerlemesi her 60 saniyede Kick sunucusundan okunur.
-- **Otomatik Geçiş**: İlerleme 8 dakika boyunca değişmezse kanal kapatılır ve sıradaki uygun kanala anında geçilir.
-- **Tamamlanma Kontrolü**: Kampanya yalnız Kick `%100/claimed` yanıtı döndürdüğünde tamamlandı sayılır.
-- **Güvenli Kapanış**: Durdurma, sıra temizleme ve uygulama kapanışı, tüm açık tarayıcı süreçlerini arkada iz bırakmadan temizler.
+> Madenci altyapısı tamamen performans ve gizlilik odaklı tasarlanmıştır.
+
+- **⚡ Sıfır Kaynak Tüketimi**: Boştayken sistemde `0` tarayıcı barındırır. Sadece madencilik anında `1` adet süreç çalıştırır.
+- **🧠 Akıllı Doğrulama**: Video süresi sadece kanal canlıysa ve süre (`currentTime`) gerçekten ilerliyorsa artar.
+- **🔐 Tam Güvenlik**: İzleyici tokenı, WebSocket bağlantıları ve handshake işlemleri sıkı denetimden geçer.
+- **🔄 Gerçek Zamanlı Senkronizasyon**: Drop ilerlemeleri her 60 saniyede bir Kick'in kendi sunucusundan çekilir.
+- **🎯 Tamamlanma Teyidi**: Bir kampanya ancak Kick API'si `%100 / Claimed` yanıtını verdiğinde tamamlanmış sayılır.
+- **🧹 Otomatik Temizlik**: Uygulama durdurulduğunda arkada bırakılan hiçbir "Zombi Tarayıcı" kalmaz, her şey temizlenir.
 
 ### 💻 Modern Web Arayüzü
-- **Animasyonlu Yönetim Paneli**: Türkçe, kullanımı kolay ve modern tasarım.
-- **Çoklu Kullanıcı Desteği**: Kullanıcı adı/şifre ile oturum açma, her kullanıcı için tamamen ayrı çerez, sıra ve worker yönetimi.
-- **Admin Paneli**: Yöneticiye özel kullanıcı istatistikleri, son erişim, IP ve Kick madenci durum takip ekranı.
-- **Görsel Zenginlik**: Kampanya bannerları, ödül görselleri ve kanal avatarları ile desteklenmiş arayüz.
-- **Oyun Bazlı Envanter**: Drop envanteriniz oyun bazında (Örn: Rust, CS2) otomatik gruplanır.
-- **Akıllı Kampanya Gruplama**: Aynı drop için uygun tüm yayıncılar tek bir görev çatısı altında toplanır.
-- **Canlı Konsol**: Renk kodlu, anlık izlenebilen ve indirilebilen madenci hata ayıklama konsolu.
-- **Yüksek Güvenlik**: CSRF koruması, imzalı oturumlar, scrypt parola doğrulaması ve brute-force korumalı giriş hız sınırı.
+> Tüm kontrolü elinize alan, şık ve tepkisel (responsive) kontrol paneli.
+
+| Özellik | Açıklama |
+| :--- | :--- |
+| **Animasyonlu Panel** | Türkçe dil destekli, göz yormayan karanlık tema ve pürüzsüz animasyonlar. |
+| **Oyun Bazlı Envanter** | Rust, CS2 gibi oyunların droplarını kendi alt kategorilerinde akıllıca gruplar. |
+| **Çoklu Kullanıcı** | Her kullanıcı için tamamen izole çerezler, sıralar ve ayrı worker görevleri. |
+| **Gelişmiş Yönetim** | Admin paneli üzerinden üyelerin durumunu, aktif madencileri ve IP geçmişini izleme. |
+| **Canlı Hata Ayıklama** | Renk kodlarıyla zenginleştirilmiş canlı konsol. |
+| **Sıkı Güvenlik** | CSRF korumaları, Scrypt tabanlı şifrelemeler ve Brute-force önlemleri. |
 
 ---
 
-## ⚙️ Pterodactyl Sunucu Gereksinimleri
+## ⚙️ Sunucu Gereksinimleri (Pterodactyl)
 
-Web panelini Pterodactyl üzerinde çalıştırmak için:
-- **İşletim Sistemi**: Ubuntu ARM64 veya AMD64
-- **Python**: 3.11 veya üzeri
-- **Tarayıcı**: Firefox ESR (veya uyumlu Chromium)
-- **Gereksinimler**: Xvfb, FFmpeg, Firefox medya kitaplıkları ve Geckodriver
+Bu proje düşük kaynaklı ARM64/AMD64 sistemler için optimize edilmiştir.
+* **OS:** Ubuntu 20.04+ (ARM64 / AMD64)
+* **Yazılım:** Python 3.11+, Firefox ESR, FFmpeg, Geckodriver, Xvfb
 
-*(Bu depo için hazırlanan `Dockerfile.arm64` ve `pterodactyl-start.sh` dosyaları, ARM64 Pterodactyl kurulumunu tam destekler.)*
-
----
-
-## 🔧 Kurulum ve Çalıştırma
+<details>
+<summary><b>🛠️ Kurulum Adımlarını Görmek İçin Tıklayın</b></summary>
 
 ### 1. Ortam Ayarları (.env)
-`.env.example` dosyasını kopyalayarak `.env` adında yeni bir dosya oluşturun ve içindeki değerleri düzenleyin:
+Projeyi indirdikten sonra `.env.example` dosyasının adını `.env` olarak değiştirin ve içini doldurun:
 
 ```env
 KDM_PASSWORD_HASH=scrypt$...
@@ -75,59 +83,39 @@ KDM_STREAM_BROWSER=firefox_bidi
 FIREFOX_BINARY=/usr/bin/firefox-esr
 ```
 
-💡 *Admin parolanız için hash oluşturma örneği (PowerShell):*
-```powershell
-@'
-import hashlib, secrets
-password = input("Parola: ").encode()
-salt = secrets.token_bytes(16)
-digest = hashlib.scrypt(password, salt=salt, n=16384, r=8, p=1, dklen=32)
-print(f"scrypt$16384$8$1${salt.hex()}${digest.hex()}")
-'@ | python -
-```
-
 ### 2. Yerel Sunucuyu Başlatma
-Gerekli paketleri kurup sunucuyu başlatın:
+Gerekli Python kütüphanelerini kurun ve sunucuyu ayaklandırın:
 ```bash
 pip install -r requirements-server.txt
 python -m uvicorn webapp:app --host 0.0.0.0 --port 8000
 ```
-*(Not: Üretim ortamında HTTPS arkasında çalıştırılması önerilir. Cloudflare Tunnel veya Nginx/Apache ters proxy kullanabilirsiniz.)*
+*(Güvenliğiniz için production ortamında Cloudflare Tunnel veya Ters Proxy kullanmanız önerilir.)*
+</details>
 
 ---
 
-## 🍪 Kick Çerezi (Session Token) Alma
+## 🍪 Kick Çerezi (Session Token) Nasıl Alınır?
 
-Botun sizin adınıza izleme yapabilmesi için Kick oturumunuza ihtiyacı vardır:
-1. Tarayıcınızdan Kick.com hesabınıza giriş yapın.
-2. `F12` tuşuna basarak Geliştirici Araçları'nı açın.
-3. **Application (Uygulama)** > **Storage (Depolama)** > **Cookies (Çerezler)** > `https://kick.com` yolunu izleyin.
-4. `session_token` isimli anahtarın değerini kopyalayın.
-5. Web veya masaüstü panelindeki ilgili alana yapıştırıp kaydedin.
+Sistemin sizin hesabınızla izleme yapabilmesi için tek bir şeye ihtiyacı var: `session_token`.
+Bunu bulmak çok basittir:
 
-⚠️ **ÖNEMLİ:** `session_token` sizin anahtarınızdır. Asla kimseyle paylaşmayın! Sistem, çerezlerinizi şifrelenmiş veya ayrılmış güvenli klasörlerde saklar.
+1. Tarayıcınızdan **Kick.com** adresine girip hesabınıza normal şekilde giriş yapın.
+2. Klavyenizden `F12` tuşuna basarak **Geliştirici Araçları**nı (Developer Tools) açın.
+3. Üst sekmelerden **Application** (veya Uygulama) kısmına gelin.
+4. Sol menüden **Storage > Cookies > `https://kick.com`** yolunu izleyin.
+5. Sağdaki listeden **`session_token`** yazan satırı bulun ve karşısındaki uzun değeri kopyalayın.
+6. Bu değeri kopyalayıp Kick Drop Miner web panelindeki çerez alanına yapıştırıp kaydedin.
 
----
-
-## 📂 Veri Yapısı (Data Klasörü)
-
-Tüm verileriniz izole edilmiş bir şekilde `KDM_DATA_DIR` altında tutulur:
-- 📝 `config.json`: Genel yayın sırası ve kayıtlı süreler.
-- 🍪 `cookies/kick.com.json`: Doğrulanmış oturum çerezleri.
-- 👥 `accounts.sqlite3`: Kullanıcı hesap veritabanı.
-- 🔒 `users/<id>/`: Her üyeye ait izole edilmiş çerez ve görev bilgileri.
-- 🗑️ `chrome_data/`: Yalnızca çalışırken kullanılan ve sonra temizlenen geçici tarayıcı profilleri.
-
-*(Not: Bu dosya ve klasörler güvenlik amacıyla `.gitignore` üzerinden engellenmiştir ve GitHub'a yüklenmez.)*
+> **⚠️ ÖNEMLİ:** `session_token` sizin dijital anahtarınızdır. **Kesinlikle** hiç kimseyle paylaşmayın! Bu sistem çerezlerinizi şifrelenmiş biçimde özel bir klasörde izole ederek saklar.
 
 ---
 
-## 🔬 Testler
+## 📂 Veri Yapısı ve Güvenlik
 
-Sistem kararlılığını test etmek için:
-```powershell
-python -m unittest discover -s tests -v
-python -m compileall -q core webapp.py
-node --check web/static/app.js
-```
-*Test kapsamı; tarayıcı sahipliği, kapanış, video ilerlemesi, sunucu doğrulamalı kampanya tamamlanması ve dönen HLS tokenlarını içerir.*
+Sistem tüm kişisel verilerinizi `KDM_DATA_DIR` altında güvenle muhafaza eder:
+* 📝 `config.json` — Kayıtlı genel yayın sıraları.
+* 🍪 `cookies/` — Şifrelenmiş doğrulanmış oturum çerezleri.
+* 👥 `accounts.sqlite3` — Kullanıcı veritabanı.
+* 🔒 `users/` — Üyelerin birbirinden izole edilmiş verileri.
+
+*(Tüm bu klasörler güvenlik kalkanı olarak `.gitignore` üzerinden engellenmiştir, GitHub'a asla yüklenmez.)*
