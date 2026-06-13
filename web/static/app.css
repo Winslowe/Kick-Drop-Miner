@@ -611,7 +611,11 @@ input:focus, textarea:focus { border-color: rgba(83,252,24,.35); box-shadow: 0 0
 }
 .connect-icon { width: 28px; height: 28px; color: var(--green); }
 .connect-header h2 { margin: 6px 0 4px; }
-.connect-header p { margin: 0; }
+.connect-description { margin: 8px 0 0; padding: 0 10px; }
+.connect-description p { margin: 0 0 10px; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.connect-description p:last-child { margin-bottom: 0; }
+.connect-description strong { color: #fff; font-weight: 600; }
+.connect-description b { color: var(--green); font-weight: 600; }
 
 /* Connect Tabs */
 .connect-tabs {
