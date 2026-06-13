@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090d12">
   <title>Kick Drop Miner • Samuro Control</title>
   <link rel="icon" href="/assets/logo.png">
-  <link rel="stylesheet" href="/static/app.css?v=20260613-12">
+  <link rel="stylesheet" href="/static/app.css?v=20260613-13">
 </head>
 <body>
   <div id="bootOverlay" class="boot-overlay">
@@ -252,10 +252,14 @@
       </div>
 
       <div class="connect-tabs">
-        <button class="connect-tab active" data-tab="tab-bookmark">
+        <button class="connect-tab active" data-tab="tab-extension">
+          <span class="connect-tab-icon">🧩</span>
+          <span class="connect-tab-label">Eklenti</span>
+          <span class="connect-tab-badge">Önerilen</span>
+        </button>
+        <button class="connect-tab" data-tab="tab-bookmark">
           <span class="connect-tab-icon">🔖</span>
           <span class="connect-tab-label">Yer İmi</span>
-          <span class="connect-tab-badge">Önerilen</span>
         </button>
         <button class="connect-tab" data-tab="tab-login">
           <span class="connect-tab-icon">🔐</span>
@@ -267,8 +271,37 @@
         </button>
       </div>
 
+      <!-- TAB: Extension -->
+      <div class="tab-panel active" id="tab-extension">
+        <div class="method-card">
+          <div class="method-steps">
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <div>
+                <strong>Eklentiyi İndir</strong>
+                <p><a href="/assets/kdm-extension.zip" download class="button button-secondary" style="padding: 4px 10px; font-size: 11px; margin-top: 5px;">KDM Eklentisini İndir (.zip)</a></p>
+              </div>
+            </div>
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <div>
+                <strong>Tarayıcıya Kur</strong>
+                <p>Uzantılar sayfasına git (<code>chrome://extensions</code> veya <code>edge://extensions</code>), sağ üstten <b>Geliştirici Modu</b>'nu aç. İndirdiğin ZIP dosyasını klasöre çıkart ve <b>Paketlenmemiş öğe yükle</b> butonundan o klasörü seç.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <div>
+                <strong>Kodu Kopyala</strong>
+                <p>Kick.com'a giriş yap. Ardından tarayıcının sağ üstündeki Eklentiler menüsünden <b>KDM Connector</b>'e tıkla ve Kopyala tuşuna bas. Sonra yandaki <b>Manuel Kod</b> sekmesine yapıştır!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB: Bookmark -->
-      <div class="tab-panel active" id="tab-bookmark">
+      <div class="tab-panel hidden" id="tab-bookmark">
         <div class="method-card">
           <div class="method-steps">
             <div class="step-item">
@@ -433,6 +466,6 @@
   </div>
 
   <div id="toastStack" class="toast-stack" aria-live="polite"></div>
-  <script src="/static/app.js?v=20260613-12" defer></script>
+  <script src="/static/app.js?v=20260613-13" defer></script>
 </body>
 </html>
